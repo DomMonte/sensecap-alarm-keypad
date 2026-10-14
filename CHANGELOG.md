@@ -6,5 +6,7 @@
   (optional *Require PIN to arm* setting).
 - Gear opens Settings on tap; entry countdown names the sensor that opened.
 - Screen Status diagnostic sensor.
+- Automate Smart Home Studio branding; status ring with countdown; PIN pad only when needed.
+- Desktop preview (`preview/`).
 - First version: on-screen Wi-Fi + Home Assistant + Alarmo onboarding, keypad UI,
   Alarmo bridge blueprint, web installer, OTA update entity.

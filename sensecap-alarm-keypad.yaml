@@ -19,7 +19,10 @@ substitutions:
   update_manifest_url: https://DomMonte.github.io/sensecap-alarm-keypad/firmware/manifest.json
 
 packages:
+  theme: !include packages/theme.yaml
   hardware: !include packages/hardware-d1.yaml
   core: !include packages/core.yaml
+  alarm: !include packages/alarm.yaml
   mqtt: !include packages/mqtt.yaml
+  ui_main: !include packages/ui-main.yaml
   ui: !include packages/ui.yaml

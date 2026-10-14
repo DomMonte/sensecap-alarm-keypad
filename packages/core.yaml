@@ -90,45 +90,6 @@ globals:
     type: bool
     restore_value: true
     initial_value: "false"
-  # Code being typed on the keypad (never persisted, never logged).
-  - id: code_buf
-    type: std::string
-    restore_value: false
-    initial_value: '""'
-  # Latest alarm state from Alarmo (MQTT).
-  - id: alarm_state
-    type: std::string
-    restore_value: false
-    initial_value: '"unknown"'
-  # Seconds left on exit/entry delay (counted down locally, resynced by HA).
-  - id: countdown
-    type: int
-    restore_value: false
-    initial_value: "0"
-  # Free-text message (open sensors, wrong PIN, ...).
-  - id: alarm_msg
-    type: std::string
-    restore_value: false
-    initial_value: '""'
-  # millis() until which the transient message stays visible.
-  - id: msg_until
-    type: uint32_t
-    restore_value: false
-    initial_value: "0"
-  # Has Alarmo's state arrived over MQTT since (re)subscribing?
-  - id: synced
-    type: bool
-    restore_value: false
-    initial_value: "false"
-  # Local brute-force protection (on top of Alarmo's own handling).
-  - id: wrong_attempts
-    type: int
-    restore_value: false
-    initial_value: "0"
-  - id: lockout_until
-    type: uint32_t
-    restore_value: false
-    initial_value: "0"
   # SSID picked on the Wi-Fi screen.
   - id: chosen_ssid
     type: std::string

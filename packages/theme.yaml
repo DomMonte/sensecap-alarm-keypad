@@ -1,0 +1,139 @@
+# -----------------------------------------------------------------------------
+# Brand theme - Automate Smart Home Studio
+#
+# Monochrome, high-contrast: near-black surfaces, white primary actions,
+# a didone serif for headlines (matches the "automate" wordmark) and
+# Space Grotesk for UI text, tracked uppercase for small labels.
+#
+#   bg 0x0A0A0A  surface 0x141414  surface2 0x1E1E1E  line 0x2A2A2A
+#   text 0xF5F5F5  muted 0x8C8C8C  dim 0x5A5A5A
+#   Status accents (only where meaning needs colour):
+#   armed 0xE5484D  delay 0xF0A030
+#
+# Icons (Wi-Fi, gear, backspace, ...) come from LVGL's built-in Montserrat
+# symbol fonts, so labels showing a symbol must set a montserrat_* font.
+# -----------------------------------------------------------------------------
+
+substitutions:
+  brand_dir: assets/brand
+
+font:
+  - file: "gfonts://DM Serif Display"
+    id: f_serif_32
+    size: 32
+    bpp: 4
+  - file: "gfonts://DM Serif Display"
+    id: f_serif_46
+    size: 46
+    bpp: 4
+  # Countdown numerals only.
+  - file: "gfonts://DM Serif Display"
+    id: f_serif_num
+    size: 96
+    bpp: 4
+    glyphs: "0123456789"
+  - file: {type: gfonts, family: Space Grotesk, weight: 700}
+    id: f_sg_13b
+    size: 13
+    bpp: 4
+  - file: {type: gfonts, family: Space Grotesk, weight: 500}
+    id: f_sg_16
+    size: 16
+    bpp: 4
+  - file: {type: gfonts, family: Space Grotesk, weight: 400}
+    id: f_sg_18
+    size: 18
+    bpp: 4
+    glyphs: " !\"#%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]_abcdefghijklmnopqrstuvwxyz|~–…"
+  - file: {type: gfonts, family: Space Grotesk, weight: 500}
+    id: f_sg_20
+    size: 20
+    bpp: 4
+  - file: {type: gfonts, family: Space Grotesk, weight: 700}
+    id: f_sg_22b
+    size: 22
+    bpp: 4
+  - file: {type: gfonts, family: Space Grotesk, weight: 500}
+    id: f_sg_30
+    size: 30
+    bpp: 4
+    glyphs: " 0123456789•-"
+
+image:
+  - file: ${brand_dir}/automate-logo-white.png
+    id: img_logo
+    resize: 168x35
+    type: RGB565
+    transparency: alpha_channel
+  - file: ${brand_dir}/automate-logo-white.png
+    id: img_logo_lg
+    resize: 312x65
+    type: RGB565
+    transparency: alpha_channel
+  - file: ${brand_dir}/automate-mark-white.png
+    id: img_mark
+    resize: 30x30
+    type: RGB565
+    transparency: alpha_channel
+
+lvgl:
+  bg_color: 0x0A0A0A
+  text_color: 0xF5F5F5
+  # Default stays Montserrat so built-in widgets (keyboard, dropdown) keep their
+  # symbols; brand fonts are applied through the styles below.
+  text_font: montserrat_20
+  theme:
+    button:
+      bg_color: 0x1E1E1E
+      text_color: 0xF5F5F5
+      radius: 6
+      border_width: 0
+      shadow_width: 0
+      pressed:
+        bg_color: 0x3A3A3A
+      disabled:
+        bg_opa: 40%
+        text_opa: 40%
+    label:
+      text_color: 0xF5F5F5
+    obj:
+      border_width: 0
+    slider:
+      bg_color: 0x2A2A2A
+    switch:
+      bg_color: 0x2A2A2A
+    spinner:
+      arc_color: 0x1E1E1E
+  style_definitions:
+    - id: st_title
+      text_font: f_serif_32
+      text_color: 0xF5F5F5
+    - id: st_body
+      text_font: f_sg_18
+      text_color: 0xB5B5B5
+      text_line_space: 6
+    - id: st_eyebrow
+      text_font: f_sg_13b
+      text_color: 0x8C8C8C
+      text_letter_space: 3
+    # White primary button (website .btn-primary).
+    - id: st_primary
+      bg_color: 0xF5F5F5
+      text_color: 0x0A0A0A
+      text_font: f_sg_22b
+      text_letter_space: 2
+      radius: 6
+    # Outline button (website .btn-outline).
+    - id: st_outline
+      bg_color: 0x141414
+      border_width: 1
+      border_color: 0x3A3A3A
+      text_color: 0xF5F5F5
+      radius: 6
+    - id: st_key
+      bg_color: 0x141414
+      border_width: 1
+      border_color: 0x262626
+      text_font: f_sg_30
+      text_color: 0xF5F5F5
+      radius: 6

@@ -1,0 +1,343 @@
+# -----------------------------------------------------------------------------
+# Keypad logic - transport- and hardware-independent.
+#
+# In:  on_alarm_state(state) / on_alarm_event(json)   (fed by packages/mqtt.yaml)
+# Out: send_command(cmd, code)                         (defined by packages/mqtt.yaml)
+# UI:  refresh_ui / refresh_pin / open_pin / close_pin (packages/ui-main.yaml)
+# Hooks the including config must define: wake_screen, onboarding_advance,
+# prefs_changed.
+#
+# Codes are never logged or persisted.
+# -----------------------------------------------------------------------------
+
+globals:
+  # Code being typed on the PIN pad (never persisted, never logged).
+  - id: code_buf
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+  # Latest alarm state from Alarmo.
+  - id: alarm_state
+    type: std::string
+    restore_value: false
+    initial_value: '"unknown"'
+  # Has Alarmo's state arrived since (re)subscribing?
+  - id: synced
+    type: bool
+    restore_value: false
+    initial_value: "false"
+  # Seconds left on exit/entry delay (counted down locally) and its start value.
+  - id: countdown
+    type: int
+    restore_value: false
+    initial_value: "0"
+  - id: countdown_total
+    type: int
+    restore_value: false
+    initial_value: "0"
+  # Mode the alarm is armed in / arming towards: "home", "away" or "" (off).
+  - id: target_mode
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+  # Sensors that started the entry delay / alarm.
+  - id: trigger_names
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+  # Transient message and the millis() it expires at.
+  - id: alarm_msg
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+  - id: msg_until
+    type: uint32_t
+    restore_value: false
+    initial_value: "0"
+  # Local brute-force protection (on top of Alarmo's own handling).
+  - id: wrong_attempts
+    type: int
+    restore_value: false
+    initial_value: "0"
+  - id: lockout_until
+    type: uint32_t
+    restore_value: false
+    initial_value: "0"
+  # Link status, set by the platform (Wi-Fi + MQTT) and read by the UI.
+  - id: link_wifi
+    type: bool
+    restore_value: false
+    initial_value: "false"
+  - id: link_mqtt
+    type: bool
+    restore_value: false
+    initial_value: "false"
+  - id: login_set
+    type: bool
+    restore_value: false
+    initial_value: "false"
+  # PIN pad: what confirming does ("off", "home", "away") and whether it's open.
+  - id: pin_action
+    type: std::string
+    restore_value: false
+    initial_value: '"off"'
+  - id: pin_open
+    type: bool
+    restore_value: false
+    initial_value: "false"
+  - id: pin_last_touch
+    type: uint32_t
+    restore_value: false
+    initial_value: "0"
+  - id: cmd_error
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+
+switch:
+  # Keypad-side rule only. For Alarmo to actually check the PIN when arming,
+  # also turn on "Require code for arming" in Alarmo > Codes.
+  - platform: template
+    id: arm_pin_required
+    name: "Require PIN to Arm"
+    icon: mdi:form-textbox-password
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - script.execute: prefs_changed
+    on_turn_off:
+      - script.execute: prefs_changed
+
+text_sensor:
+  # Mirror of what the main screen shows, for checking the keypad from HA.
+  - platform: template
+    id: screen_status
+    name: "Screen Status"
+    icon: mdi:monitor
+    entity_category: diagnostic
+
+script:
+  # ---- Inputs ----------------------------------------------------------------
+  # Retained state from Alarmo.
+  - id: on_alarm_state
+    mode: queued
+    parameters:
+      state: string
+    then:
+      - lambda: |-
+          if (state.empty()) return;
+          const std::string prev = id(alarm_state);
+          id(alarm_state) = state;
+          const bool first = !id(synced);
+          id(synced) = true;
+          if (state == "disarmed") {
+            id(target_mode) = "";
+            id(countdown) = 0;
+          } else if (state.rfind("armed_", 0) == 0) {
+            id(target_mode) = state.substr(6);
+            id(countdown) = 0;
+          } else if (state == "triggered") {
+            id(countdown) = 0;
+          }
+          if (state != "pending" && state != "triggered") id(trigger_names) = "";
+          if (prev != state && !first) {
+            // The last command worked (or the alarm moved on by itself).
+            id(wrong_attempts) = 0;
+            if (id(alarm_msg) == "Sending...") id(msg_until) = 0;
+          }
+          ESP_LOGI("alarm", "Alarm %s -> %s", prev.c_str(), state.c_str());
+      - if:
+          condition:
+            lambda: |-
+              const auto &s = id(alarm_state);
+              return s == "pending" || s == "triggered" || s == "arming";
+          then:
+            - script.execute: wake_screen
+      # Entry delay / alarm: a PIN is the only way out, so show the pad.
+      - if:
+          condition:
+            lambda: |-
+              const auto &s = id(alarm_state);
+              return (s == "pending" || s == "triggered") && !id(pin_open);
+          then:
+            - script.execute: {id: open_pin, action: "off"}
+          else:
+            # Any other state change finishes what the PIN pad was for.
+            - if:
+                condition:
+                  lambda: "return id(pin_open) && id(alarm_state) != \"pending\" && id(alarm_state) != \"triggered\";"
+                then:
+                  - script.execute: close_pin
+      - script.execute: onboarding_advance
+      - script.execute: refresh_ui
+
+  # Event JSON from Alarmo.
+  - id: on_alarm_event
+    mode: queued
+    parameters:
+      payload: string
+    then:
+      - lambda: |-
+          JsonDocument doc;
+          if (deserializeJson(doc, payload) != DeserializationError::Ok) {
+            ESP_LOGW("alarm", "Ignoring malformed event");
+            return;
+          }
+          const std::string ev = doc["event"] | "";
+          auto names = [&doc]() {
+            std::string out;
+            for (JsonObject s : doc["sensors"].as<JsonArray>()) {
+              const char *n = s["name"] | (s["entity_id"] | "");
+              if (!out.empty()) out += ", ";
+              out += n;
+            }
+            return out;
+          };
+          std::string msg;
+          if (ev.rfind("ARM_", 0) == 0) {
+            std::string mode = ev.substr(4);
+            for (auto &c : mode) c = tolower(c);
+            id(target_mode) = mode;
+            id(countdown) = doc["delay"] | 0;
+            id(countdown_total) = id(countdown);
+          } else if (ev == "TRIGGER") {
+            id(countdown) = doc["delay"] | 0;
+            id(countdown_total) = id(countdown);
+            const std::string n = names();
+            if (!n.empty()) id(trigger_names) = n;
+          } else if (ev == "FAILED_TO_ARM") {
+            const std::string n = names();
+            msg = n.empty() ? "Can't arm - a sensor is open" : "Close first: " + n;
+          } else if (ev == "INVALID_CODE_PROVIDED") {
+            msg = "Wrong PIN - try again";
+            id(wrong_attempts)++;
+            if (id(wrong_attempts) >= 5) {
+              id(lockout_until) = millis() + 60000;
+              id(wrong_attempts) = 0;
+              msg = "Too many wrong PINs - locked for 60 s";
+            }
+          } else if (ev == "NO_CODE_PROVIDED") {
+            msg = "PIN required";
+          } else if (ev == "COMMAND_NOT_ALLOWED") {
+            msg = "Not allowed right now";
+          } else {
+            return;
+          }
+          if (msg.size() > 180) msg.resize(180);
+          if (!msg.empty()) {
+            id(alarm_msg) = msg;
+            id(msg_until) = millis() + 8000;
+          }
+          ESP_LOGI("alarm", "Event %s", ev.c_str());
+      - script.execute: refresh_pin
+      - script.execute: refresh_ui
+
+  # ---- User actions ----------------------------------------------------------
+  # Arm button on the main screen. mode = home | away
+  - id: tap_arm
+    parameters:
+      mode: string
+    then:
+      - if:
+          condition:
+            lambda: "return id(arm_pin_required).state;"
+          then:
+            - script.execute: {id: open_pin, action: !lambda "return mode;"}
+          else:
+            - script.execute: {id: request_mode, mode: !lambda "return mode;", code: ""}
+
+  # PIN pad digit / clear / backspace.
+  - id: press_key
+    mode: queued
+    parameters:
+      key: string
+    then:
+      - lambda: |-
+          auto &c = id(code_buf);
+          if (key == "C") c.clear();
+          else if (key == "<") { if (!c.empty()) c.pop_back(); }
+          else if (c.size() < 10) c += key;
+          id(pin_last_touch) = millis();
+      - script.execute: refresh_pin
+
+  # PIN pad confirm button.
+  - id: pin_confirm
+    then:
+      - if:
+          condition:
+            lambda: "return id(code_buf).empty();"
+          then:
+            - script.execute: {id: show_message, text: "Enter your PIN"}
+          else:
+            - script.execute:
+                id: request_mode
+                mode: !lambda "return id(pin_action);"
+                code: !lambda "return id(code_buf);"
+            - lambda: "id(code_buf).clear(); id(pin_last_touch) = millis();"
+            - script.execute: refresh_pin
+
+  # Validate and send. mode = home | away | off
+  - id: request_mode
+    mode: queued
+    parameters:
+      mode: string
+      code: string
+    then:
+      - lambda: |-
+          const std::string &s = id(alarm_state);
+          std::string err;
+          if (millis() < id(lockout_until)) {
+            err = "Too many wrong PINs - wait a minute";
+          } else if (!id(link_mqtt)) {
+            err = "Offline - can't reach Alarmo";
+          } else if (!id(synced)) {
+            err = "Waiting for Alarmo";
+          } else if (mode == "off" && s == "disarmed") {
+            err = "Already disarmed";
+          } else if (mode != "off" && s != "disarmed") {
+            err = "Disarm first";
+          } else if (code.empty() && (mode == "off" || id(arm_pin_required).state)) {
+            err = "Enter your PIN";
+          }
+          id(cmd_error) = err;
+      - if:
+          condition:
+            lambda: "return id(cmd_error).empty();"
+          then:
+            - script.execute:
+                id: send_command
+                cmd: !lambda 'return std::string(mode == "home" ? "ARM_HOME" : mode == "away" ? "ARM_AWAY" : "DISARM");'
+                code: !lambda "return code;"
+            - script.execute: {id: show_message, text: "Sending..."}
+          else:
+            - script.execute: {id: show_message, text: !lambda "return id(cmd_error);"}
+
+  - id: show_message
+    mode: restart
+    parameters:
+      text: string
+    then:
+      - lambda: |-
+          id(alarm_msg) = text;
+          id(msg_until) = millis() + 5000;
+      - script.execute: refresh_pin
+      - script.execute: refresh_ui
+
+interval:
+  # Local countdown, message expiry and PIN pad timeout.
+  - interval: 1s
+    then:
+      - lambda: |-
+          bool dirty = false;
+          if (id(countdown) > 0) { id(countdown)--; dirty = true; }
+          if (id(msg_until) != 0 && millis() > id(msg_until)) { id(msg_until) = 0; dirty = true; }
+          if (dirty) { id(refresh_ui).execute(); id(refresh_pin).execute(); }
+      - if:
+          condition:
+            lambda: |-
+              const auto &s = id(alarm_state);
+              return id(pin_open) && s != "pending" && s != "triggered" &&
+                     millis() - id(pin_last_touch) > 30000;
+          then:
+            - script.execute: close_pin

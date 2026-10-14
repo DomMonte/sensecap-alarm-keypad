@@ -3,11 +3,16 @@
 Turn a **Seeed SenseCAP Indicator D1** (4" 480×480 touch screen, ESP32-S3) into a wall-mounted keypad for **[Alarmo](https://github.com/nielsfaber/alarmo)** in Home Assistant.
 
 - **Talks to Alarmo over MQTT** using Alarmo's built-in MQTT support. No blueprint or automation needed.
-- **Home | Away | Off** selector and an always-visible PIN pad.
+- **Branded for Automate Smart Home Studio:** monochrome, serif headlines, a status ring that fills with the exit/entry countdown.
+- **One tap to arm** (Home / Away). The PIN pad only appears when a PIN is needed: to disarm, during the entry delay, or to arm if *Require PIN to arm* is on.
 - **PINs only exist in Alarmo.** The keypad forwards what you type; Alarmo checks it, applies user permissions and logs who disarmed.
 - **Live status:** Off / Armed / exit countdown / entry countdown with the door that opened / ALARM, plus wrong-PIN and "close first" messages.
 
 > ⚠️ This is a convenience keypad, not a certified security product. If Home Assistant or the MQTT broker is down, the keypad can't arm or disarm. Make sure your sirens and sensors fail safe on their own (e.g. Konnected's standalone alarm logic).
+
+| Ready | Leaving | Armed | Entry delay | PIN pad | Alarm |
+|---|---|---|---|---|---|
+| ![](docs/screens/disarmed.png) | ![](docs/screens/arming.png) | ![](docs/screens/armed.png) | ![](docs/screens/pending_main.png) | ![](docs/screens/pin.png) | ![](docs/screens/triggered_main.png) |
 
 ---
 
@@ -58,8 +63,9 @@ fixtures.
 
 | Action | How |
 |---|---|
-| Arm | Tap **Home** or **Away**. With *Require PIN to arm* on, type your PIN first. |
-| Turn off / cancel arming / stop entry delay | Type your PIN → **Off** |
+| Arm | Tap **Arm Home** or **Arm Away**. With *Require PIN to arm* on, the PIN pad opens first. |
+| Disarm / cancel arming | Tap **Disarm** (or **Cancel**), enter your PIN, tap **DISARM** |
+| Entry delay / alarm | The PIN pad opens by itself |
 | Settings | **Tap** the gear (next to the Wi-Fi icon): brightness, screen timeout, Require PIN to arm, device info, restart, re-run setup |
 | Wake screen | Touch anywhere, or press the side button. It also wakes during arming, entry delay and alarm. |
 | Factory reset | Hold the side button for 10 seconds |
@@ -83,7 +89,16 @@ pip install esphome==2026.9.1
 esphome run sensecap-alarm-keypad.yaml
 ```
 
-The layout is `packages/hardware-d1.yaml` (pins), `core.yaml` (network/API/OTA/state), `mqtt.yaml` (Alarmo MQTT protocol and keypad logic) and `ui.yaml` (LVGL pages). CI builds every push. Publishing a GitHub release deploys the web installer and the OTA manifest to GitHub Pages.
+Packages: `hardware-d1.yaml` (pins), `core.yaml` (network/API/OTA), `alarm.yaml` (keypad logic), `mqtt.yaml` (Alarmo MQTT transport), `theme.yaml` (brand fonts/colours/logo), `ui-main.yaml` (main screen + PIN pad) and `ui.yaml` (onboarding + settings).
+
+### Desktop preview
+
+The main screen can be rendered on a Mac/Linux desktop without the hardware (needs SDL2):
+
+```bash
+esphome compile preview/preview.yaml
+preview/render.sh          # writes preview/out/<scenario>.png
+``` CI builds every push. Publishing a GitHub release deploys the web installer and the OTA manifest to GitHub Pages.
 
 ## License
 

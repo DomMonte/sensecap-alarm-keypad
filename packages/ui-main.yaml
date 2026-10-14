@@ -1,0 +1,442 @@
+# -----------------------------------------------------------------------------
+# Main screen + PIN pad (480 x 480, absolute layout). Needs packages/theme.yaml
+# and packages/alarm.yaml. Hardware-free, so the host preview can render it.
+#
+#   pg_keypad  status ring (state / countdown) + Arm Home / Arm Away, or Disarm
+#   pg_pin     PIN pad - only shown when a PIN is needed (disarm, entry delay,
+#              alarm, or arming with "Require PIN to arm" on)
+# -----------------------------------------------------------------------------
+
+lvgl:
+  pages:
+    # =========================================================================
+    # MAIN
+    # =========================================================================
+    - id: pg_keypad
+      widgets:
+        # ---- Header: wordmark, link icons, settings -------------------------
+        - image:
+            src: img_logo
+            x: 22
+            y: 22
+        - label:
+            id: lbl_icons
+            align: TOP_RIGHT
+            x: -70
+            y: 26
+            text: ""
+            text_font: montserrat_20
+            text_color: 0x8C8C8C
+        - button:
+            id: btn_gear
+            align: TOP_RIGHT
+            x: -10
+            y: 12
+            width: 56
+            height: 56
+            bg_opa: TRANSP
+            shadow_opa: TRANSP
+            on_click:
+              - lvgl.page.show: pg_settings
+            widgets:
+              - label:
+                  align: CENTER
+                  text: ""
+                  text_font: montserrat_24
+                  text_color: 0x8C8C8C
+
+        # ---- Status ring ----------------------------------------------------
+        - arc:
+            id: arc_ring
+            x: 116
+            y: 62
+            width: 248
+            height: 248
+            rotation: 270
+            start_angle: 0
+            end_angle: 360
+            min_value: 0
+            max_value: 100
+            value: 100
+            adjustable: false
+            arc_width: 6
+            arc_color: 0x1E1E1E
+            indicator:
+              arc_width: 6
+              arc_color: 0xF5F5F5
+              arc_rounded: true
+            knob:
+              bg_opa: TRANSP
+              pad_all: 0
+        - label:
+            id: lbl_eyebrow
+            x: 140
+            y: 122
+            width: 200
+            text_align: CENTER
+            text: "STATUS"
+            styles: st_eyebrow
+        - label:
+            id: lbl_title
+            x: 122
+            y: 150
+            width: 236
+            text_align: CENTER
+            long_mode: DOT
+            text: "Starting"
+            text_font: f_serif_46
+        - label:
+            id: lbl_num
+            x: 140
+            y: 122
+            width: 200
+            text_align: CENTER
+            text: "30"
+            text_font: f_serif_num
+            hidden: true
+        - label:
+            id: lbl_caption
+            x: 132
+            y: 234
+            width: 208
+            text_align: CENTER
+            long_mode: DOT
+            text: ""
+            styles: st_eyebrow
+            text_letter_space: 2
+
+        # ---- Message line ---------------------------------------------------
+        - label:
+            id: lbl_msg
+            x: 20
+            y: 320
+            width: 440
+            text_align: CENTER
+            long_mode: DOT
+            text: ""
+            text_font: f_sg_16
+
+        # ---- Actions: Arm Home / Arm Away  (or Disarm) ----------------------
+        - button:
+            id: btn_home
+            x: 18
+            y: 350
+            width: 216
+            height: 112
+            styles: st_outline
+            pressed:
+              bg_color: 0x2A2A2A
+            on_click:
+              - script.execute: {id: tap_arm, mode: "home"}
+            widgets:
+              - label: {align: TOP_LEFT, x: 2, y: 4, text: "ARM", styles: st_eyebrow}
+              - label: {align: BOTTOM_LEFT, x: 0, y: 2, text: "Home", text_font: f_serif_32, text_color: 0xF5F5F5}
+              - label: {align: BOTTOM_RIGHT, x: 0, y: -6, text: "", text_font: montserrat_18, text_color: 0x8C8C8C}
+        - button:
+            id: btn_away
+            x: 246
+            y: 350
+            width: 216
+            height: 112
+            styles: st_primary
+            pressed:
+              bg_color: 0xC8C8C8
+            on_click:
+              - script.execute: {id: tap_arm, mode: "away"}
+            widgets:
+              - label: {align: TOP_LEFT, x: 2, y: 4, text: "ARM", styles: st_eyebrow, text_color: 0x6A6A6A}
+              - label: {align: BOTTOM_LEFT, x: 0, y: 2, text: "Away", text_font: f_serif_32, text_color: 0x0A0A0A, text_letter_space: 0}
+              - label: {align: BOTTOM_RIGHT, x: 0, y: -6, text: "", text_font: montserrat_18, text_color: 0x0A0A0A}
+        - button:
+            id: btn_disarm
+            x: 18
+            y: 350
+            width: 444
+            height: 112
+            styles: st_primary
+            hidden: true
+            pressed:
+              bg_color: 0xC8C8C8
+            on_click:
+              - script.execute: {id: open_pin, action: "off"}
+            widgets:
+              - label: {id: lbl_disarm_eyebrow, align: TOP_LEFT, x: 2, y: 4, text: "PIN REQUIRED", styles: st_eyebrow, text_color: 0x6A6A6A}
+              - label: {id: lbl_disarm, align: BOTTOM_LEFT, x: 0, y: 2, text: "Disarm", text_font: f_serif_32, text_color: 0x0A0A0A, text_letter_space: 0}
+              - label: {align: BOTTOM_RIGHT, x: 0, y: -6, text: "", text_font: montserrat_18, text_color: 0x0A0A0A}
+
+    # =========================================================================
+    # PIN PAD
+    # =========================================================================
+    - id: pg_pin
+      skip: true
+      widgets:
+        - button:
+            align: TOP_LEFT
+            x: 6
+            y: 6
+            width: 56
+            height: 56
+            bg_opa: TRANSP
+            shadow_opa: TRANSP
+            on_click:
+              - script.execute: close_pin
+            widgets:
+              - label: {align: CENTER, text: "", text_font: montserrat_24, text_color: 0x8C8C8C}
+        - image:
+            src: img_mark
+            align: TOP_RIGHT
+            x: -22
+            y: 18
+        - label:
+            id: lbl_pin_title
+            align: TOP_MID
+            y: 20
+            text: "ENTER PIN TO DISARM"
+            styles: st_eyebrow
+        - label:
+            id: lbl_pin_sub
+            align: TOP_MID
+            y: 42
+            width: 340
+            text_align: CENTER
+            long_mode: DOT
+            text: ""
+            text_font: f_sg_16
+        - label:
+            id: lbl_pin
+            align: TOP_MID
+            y: 66
+            text: ""
+            text_font: f_sg_30
+            text_letter_space: 10
+        - button: {x: 18,  y: 112, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "1"}}, widgets: [label: {align: CENTER, text: "1", text_font: f_sg_30}]}
+        - button: {x: 170, y: 112, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "2"}}, widgets: [label: {align: CENTER, text: "2", text_font: f_sg_30}]}
+        - button: {x: 322, y: 112, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "3"}}, widgets: [label: {align: CENTER, text: "3", text_font: f_sg_30}]}
+        - button: {x: 18,  y: 176, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "4"}}, widgets: [label: {align: CENTER, text: "4", text_font: f_sg_30}]}
+        - button: {x: 170, y: 176, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "5"}}, widgets: [label: {align: CENTER, text: "5", text_font: f_sg_30}]}
+        - button: {x: 322, y: 176, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "6"}}, widgets: [label: {align: CENTER, text: "6", text_font: f_sg_30}]}
+        - button: {x: 18,  y: 240, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "7"}}, widgets: [label: {align: CENTER, text: "7", text_font: f_sg_30}]}
+        - button: {x: 170, y: 240, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "8"}}, widgets: [label: {align: CENTER, text: "8", text_font: f_sg_30}]}
+        - button: {x: 322, y: 240, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "9"}}, widgets: [label: {align: CENTER, text: "9", text_font: f_sg_30}]}
+        - button: {x: 18,  y: 304, width: 140, height: 56, styles: st_key, bg_opa: TRANSP, border_width: 0, pressed: {bg_color: 0x2A2A2A, bg_opa: COVER}, on_click: {script.execute: {id: press_key, key: "C"}}, widgets: [label: {align: CENTER, text: "CLEAR", styles: st_eyebrow}]}
+        - button: {x: 170, y: 304, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "0"}}, widgets: [label: {align: CENTER, text: "0", text_font: f_sg_30}]}
+        - button: {x: 322, y: 304, width: 140, height: 56, styles: st_key, bg_opa: TRANSP, border_width: 0, pressed: {bg_color: 0x2A2A2A, bg_opa: COVER}, on_click: {script.execute: {id: press_key, key: "<"}}, widgets: [label: {align: CENTER, text: "", text_font: montserrat_24, text_color: 0x8C8C8C}]}
+        - button:
+            x: 18
+            y: 376
+            width: 444
+            height: 86
+            styles: st_primary
+            pressed:
+              bg_color: 0xC8C8C8
+            on_click:
+              - script.execute: pin_confirm
+            widgets:
+              - label:
+                  id: lbl_pin_go
+                  align: CENTER
+                  text: "DISARM"
+                  text_font: f_sg_22b
+                  text_color: 0x0A0A0A
+                  text_letter_space: 4
+
+script:
+  - id: open_pin
+    parameters:
+      action: string
+    then:
+      - lambda: |-
+          id(pin_action) = action;
+          id(code_buf).clear();
+          id(pin_open) = true;
+          id(pin_last_touch) = millis();
+      - script.execute: refresh_pin
+      - lvgl.page.show: pg_pin
+      - script.execute: refresh_ui
+
+  - id: close_pin
+    then:
+      - lambda: |-
+          id(pin_open) = false;
+          id(code_buf).clear();
+      - lvgl.page.show: pg_keypad
+      - script.execute: refresh_ui
+
+  # ---- PIN pad rendering -----------------------------------------------------
+  - id: refresh_pin
+    then:
+      - lambda: |-
+          const std::string &a = id(pin_action);
+          const std::string &s = id(alarm_state);
+          const char *title = a == "home" ? "ENTER PIN TO ARM HOME"
+                            : a == "away" ? "ENTER PIN TO ARM AWAY"
+                            : s == "triggered" ? "ENTER PIN TO SILENCE"
+                            : "ENTER PIN TO DISARM";
+          const char *go = a == "home" ? "ARM HOME" : a == "away" ? "ARM AWAY" : "DISARM";
+          lv_label_set_text(id(lbl_pin_title), title);
+          lv_label_set_text(id(lbl_pin_go), go);
+
+          std::string sub;
+          uint32_t col = 0xF5F5F5;
+          const bool msg_active = id(msg_until) != 0 && millis() < id(msg_until);
+          if (msg_active && !id(alarm_msg).empty()) {
+            sub = id(alarm_msg);
+            if (sub != "Sending...") col = 0xE5484D;
+          } else if (s == "pending") {
+            sub = "Alarm in " + std::to_string(id(countdown)) + " s";
+            col = 0xF0A030;
+          } else if (s == "triggered") {
+            sub = id(trigger_names).empty() ? "Alarm sounding" : "Alarm - " + id(trigger_names);
+            col = 0xE5484D;
+          }
+          lv_label_set_text(id(lbl_pin_sub), sub.c_str());
+          lv_obj_set_style_text_color(id(lbl_pin_sub), lv_color_hex(col), LV_PART_MAIN);
+
+          const auto &c = id(code_buf);
+          std::string dots;
+          if (c.empty()) {
+            dots = "- - - -";
+          } else {
+            for (size_t i = 0; i < c.size(); i++) dots += "\xE2\x80\xA2";
+          }
+          lv_label_set_text(id(lbl_pin), dots.c_str());
+          lv_obj_set_style_text_color(id(lbl_pin), lv_color_hex(c.empty() ? 0x3A3A3A : 0xF5F5F5), LV_PART_MAIN);
+
+  # ---- Main screen rendering -------------------------------------------------
+  - id: refresh_ui
+    then:
+      - lambda: |-
+          const std::string &s = id(alarm_state);
+          const bool online = id(link_mqtt);
+          const bool msg_active = id(msg_until) != 0 && millis() < id(msg_until);
+          const int cd = id(countdown);
+          const int total = id(countdown_total) > 0 ? id(countdown_total) : cd;
+          const uint32_t WHITE = 0xF5F5F5, RED = 0xE5484D, AMBER = 0xF0A030, DIM = 0x2A2A2A;
+
+          auto mode_name = [](const std::string &m) -> std::string {
+            if (m == "home") return "HOME";
+            if (m == "away") return "AWAY";
+            if (m == "night") return "NIGHT";
+            if (m == "vacation") return "VACATION";
+            if (m.empty()) return "";
+            return "CUSTOM";
+          };
+
+          std::string eyebrow = "STATUS", title, caption, message, num;
+          uint32_t ring = DIM, title_col = WHITE;
+          int ring_val = 100;
+          enum { ACT_NONE, ACT_ARM, ACT_DISARM } act = ACT_NONE;
+          std::string disarm_eyebrow = "PIN REQUIRED", disarm_text = "Disarm";
+
+          if (!online) {
+            title = "Offline";
+            caption = id(login_set) ? "BROKER UNREACHABLE" : "SET MQTT LOGIN IN HA";
+            act = ACT_ARM;  // shown, but disabled
+          } else if (!id(synced)) {
+            title = "Waiting";
+            caption = "NO STATE FROM ALARMO";
+            act = ACT_ARM;
+          } else if (s == "disarmed") {
+            title = "Disarmed";
+            caption = "READY TO ARM";
+            ring = WHITE;
+            act = ACT_ARM;
+          } else if (s.rfind("armed_", 0) == 0) {
+            eyebrow = "ARMED";
+            title = s == "armed_home" ? "Home" : s == "armed_away" ? "Away"
+                  : s == "armed_night" ? "Night" : s == "armed_vacation" ? "Vacation" : "Custom";
+            caption = "SYSTEM ARMED";
+            ring = RED;
+            act = ACT_DISARM;
+          } else if (s == "arming") {
+            eyebrow = "ARMING " + mode_name(id(target_mode));
+            num = std::to_string(cd);
+            caption = "SECONDS TO LEAVE";
+            ring = AMBER;
+            ring_val = total > 0 ? cd * 100 / total : 0;
+            act = ACT_DISARM;
+            disarm_eyebrow = "CHANGED YOUR MIND?";
+            disarm_text = "Cancel";
+          } else if (s == "pending") {
+            eyebrow = "ENTRY DETECTED";
+            num = std::to_string(cd);
+            caption = "SECONDS TO DISARM";
+            ring = AMBER;
+            ring_val = total > 0 ? cd * 100 / total : 0;
+            act = ACT_DISARM;
+            if (!id(trigger_names).empty()) message = id(trigger_names) + " opened";
+          } else if (s == "triggered") {
+            eyebrow = "INTRUDER";
+            title = "Alarm";
+            title_col = RED;
+            caption = "ENTER PIN TO SILENCE";
+            ring = RED;
+            act = ACT_DISARM;
+            disarm_eyebrow = "PIN REQUIRED";
+            disarm_text = "Silence alarm";
+            if (!id(trigger_names).empty()) message = "Triggered by " + id(trigger_names);
+          } else {
+            title = "Unknown";
+            caption = s;
+          }
+          bool alert = s == "triggered";
+          if (msg_active && !id(alarm_msg).empty()) {
+            message = id(alarm_msg);
+            alert = message != "Sending...";
+          }
+          lv_obj_set_style_text_color(id(lbl_msg), lv_color_hex(alert ? RED : WHITE), LV_PART_MAIN);
+
+          // Ring + centre text
+          lv_arc_set_value(id(arc_ring), ring_val);
+          lv_obj_set_style_arc_color(id(arc_ring), lv_color_hex(ring), LV_PART_INDICATOR);
+          lv_obj_set_style_arc_opa(id(arc_ring), LV_OPA_COVER, LV_PART_INDICATOR);
+          lv_label_set_text(id(lbl_eyebrow), eyebrow.c_str());
+          lv_label_set_text(id(lbl_caption), caption.c_str());
+          lv_label_set_text(id(lbl_msg), message.c_str());
+          if (num.empty()) {
+            lv_label_set_text(id(lbl_title), title.c_str());
+            lv_obj_set_style_text_color(id(lbl_title), lv_color_hex(title_col), LV_PART_MAIN);
+            lv_obj_remove_flag(id(lbl_title), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(lbl_num), LV_OBJ_FLAG_HIDDEN);
+          } else {
+            lv_label_set_text(id(lbl_num), num.c_str());
+            lv_obj_set_style_text_color(id(lbl_num), lv_color_hex(ring), LV_PART_MAIN);
+            lv_obj_remove_flag(id(lbl_num), LV_OBJ_FLAG_HIDDEN);
+            lv_obj_add_flag(id(lbl_title), LV_OBJ_FLAG_HIDDEN);
+          }
+
+          // Actions
+          const bool enabled = online && id(synced);
+          lv_obj_t *arm[2] = {id(btn_home), id(btn_away)};
+          for (auto *b : arm) {
+            if (act == ACT_ARM) lv_obj_remove_flag(b, LV_OBJ_FLAG_HIDDEN);
+            else lv_obj_add_flag(b, LV_OBJ_FLAG_HIDDEN);
+            if (enabled) lv_obj_remove_state(b, LV_STATE_DISABLED);
+            else lv_obj_add_state(b, LV_STATE_DISABLED);
+          }
+          if (act == ACT_DISARM) lv_obj_remove_flag(id(btn_disarm), LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_add_flag(id(btn_disarm), LV_OBJ_FLAG_HIDDEN);
+          lv_label_set_text(id(lbl_disarm_eyebrow), disarm_eyebrow.c_str());
+          lv_label_set_text(id(lbl_disarm), disarm_text.c_str());
+
+          // Link icons: Wi-Fi always, warning when the broker is down.
+          std::string icons = id(link_wifi) ? "" : "";
+          if (!online) icons += "  ";
+          lv_label_set_text(id(lbl_icons), icons.c_str());
+
+          // Mirror to HA (diagnostic) - never contains the code.
+          std::string shown = (num.empty() ? title : num + " s") + " | " + eyebrow + " | " + caption +
+                              (message.empty() ? "" : " | " + message) +
+                              (act == ACT_ARM ? " [arm]" : act == ACT_DISARM ? " [disarm]" : "") +
+                              (id(pin_open) ? " {PIN pad: " + id(pin_action) + "}" : "");
+          if (id(screen_status).state != shown) id(screen_status).publish_state(shown);
+
+interval:
+  # Alarm: pulse the ring.
+  - interval: 500ms
+    then:
+      - lambda: |-
+          static bool on = true;
+          if (id(alarm_state) != "triggered") { on = true; return; }
+          on = !on;
+          lv_obj_set_style_arc_opa(id(arc_ring), on ? LV_OPA_COVER : LV_OPA_30, LV_PART_INDICATOR);
