@@ -1,0 +1,25 @@
+# =============================================================================
+#  SenseCAP Alarm Keypad
+#  Turns a Seeed SenseCAP Indicator D1 into a wall keypad for Alarmo
+#  (Home Assistant) over MQTT. No secrets are compiled in - the same firmware works for
+#  everyone; Wi-Fi and Home Assistant are set up on the screen at first boot.
+#
+#  This is the file the CI builds and the file ESPHome's "Take control"
+#  (dashboard_import) pulls in. Override any substitution in your own copy.
+# =============================================================================
+
+substitutions:
+  name: alarm-keypad
+  friendly_name: Alarm Keypad
+  project_name: DomMonte.sensecap-alarm-keypad
+  project_version: "0.1.0"
+  # GitHub "owner/repo" - change this if you fork.
+  github_repo: DomMonte/sensecap-alarm-keypad
+  # Published by .github/workflows/build.yml to GitHub Pages.
+  update_manifest_url: https://DomMonte.github.io/sensecap-alarm-keypad/firmware/manifest.json
+
+packages:
+  hardware: !include packages/hardware-d1.yaml
+  core: !include packages/core.yaml
+  mqtt: !include packages/mqtt.yaml
+  ui: !include packages/ui.yaml

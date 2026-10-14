@@ -1,0 +1,1090 @@
+# -----------------------------------------------------------------------------
+# LVGL user interface - 480 x 480 touch screen
+#
+# Pages
+#   Onboarding : pg_welcome -> pg_wifi -> pg_wifi_pw -> pg_connecting
+#                (pg_wifi_phone = phone/captive-portal alternative)
+#                -> pg_ha -> pg_link -> pg_done
+#   Normal use : pg_keypad  <->  pg_settings (tap the gear)
+#
+# Palette
+#   bg 0x0E1013  surface 0x1A1E24  surface2 0x252A32  text 0xECEEF1
+#   muted 0x8B929C  accent 0x3D8BFD  green 0x1F9D63  red 0xD43F48
+#   amber 0xD98E12  grey 0x3A3F47
+# -----------------------------------------------------------------------------
+
+lvgl:
+  id: lvgl_comp
+  displays: main_display
+  touchscreens: main_touch
+  bg_color: 0x0E1013
+  text_color: 0xECEEF1
+  text_font: montserrat_20
+  theme:
+    button:
+      bg_color: 0x252A32
+      text_color: 0xECEEF1
+      radius: 14
+      border_width: 0
+      shadow_width: 0
+      pressed:
+        bg_color: 0x3D8BFD
+      disabled:
+        bg_opa: 40%
+        text_opa: 40%
+    label:
+      text_color: 0xECEEF1
+    obj:
+      border_width: 0
+  style_definitions:
+    - id: st_title
+      text_font: montserrat_32
+      text_color: 0xECEEF1
+    - id: st_body
+      text_font: montserrat_20
+      text_color: 0xB7BDC6
+      text_line_space: 6
+    - id: st_primary
+      bg_color: 0x3D8BFD
+      text_color: 0xFFFFFF
+      text_font: montserrat_24
+    - id: st_digit
+      text_font: montserrat_32
+    - id: st_action
+      text_font: montserrat_22
+  on_idle:
+    timeout: !lambda "return (uint32_t) (id(screen_timeout_s).state * 1000);"
+    then:
+      - script.execute: sleep_screen
+
+  pages:
+    # =========================================================================
+    # ONBOARDING 1 - Welcome
+    # =========================================================================
+    - id: pg_welcome
+      skip: true
+      widgets:
+        - label:
+            align: TOP_MID
+            y: 70
+            text: ""
+            text_font: montserrat_48
+            text_color: 0x3D8BFD
+        - label:
+            align: TOP_MID
+            y: 140
+            text: "Alarm Keypad"
+            styles: st_title
+        - label:
+            align: TOP_MID
+            y: 200
+            width: 400
+            text_align: CENTER
+            long_mode: WRAP
+            styles: st_body
+            text: "Let's connect this keypad to your Wi-Fi, add it to Home Assistant and link it to Alarmo over MQTT."
+        - button:
+            align: BOTTOM_MID
+            y: -40
+            width: 300
+            height: 64
+            styles: st_primary
+            on_click:
+              - globals.set:
+                  id: ob_started
+                  value: "true"
+              - script.execute: onboarding_advance
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "Get started"
+
+    # =========================================================================
+    # ONBOARDING 2 - Choose Wi-Fi network
+    # =========================================================================
+    - id: pg_wifi
+      skip: true
+      widgets:
+        - label:
+            align: TOP_MID
+            y: 28
+            text: "Connect to Wi-Fi"
+            styles: st_title
+        - label:
+            align: TOP_MID
+            y: 80
+            text: "Step 1 of 3 - choose your network"
+            styles: st_body
+        - dropdown:
+            id: dd_wifi
+            align: TOP_LEFT
+            x: 30
+            y: 130
+            width: 340
+            height: 60
+            text_font: montserrat_22
+            options:
+              - "Scanning..."
+            dropdown_list:
+              text_font: montserrat_22
+              max_height: 240
+        - button:
+            id: btn_rescan
+            align: TOP_RIGHT
+            x: -30
+            y: 130
+            width: 70
+            height: 60
+            on_click:
+              - script.execute: start_wifi_scan
+            widgets:
+              - label:
+                  align: CENTER
+                  text: ""
+                  text_font: montserrat_24
+        - label:
+            id: lbl_wifi_err
+            align: TOP_MID
+            y: 210
+            width: 420
+            text_align: CENTER
+            long_mode: WRAP
+            text: ""
+            text_color: 0xFF6B6B
+        - button:
+            align: BOTTOM_MID
+            y: -110
+            width: 300
+            height: 64
+            styles: st_primary
+            on_click:
+              - script.execute: wifi_pick_network
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "Next"
+        - button:
+            align: BOTTOM_MID
+            y: -30
+            width: 300
+            height: 56
+            bg_opa: TRANSP
+            on_click:
+              - lvgl.page.show: pg_wifi_phone
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "Set up with my phone instead"
+                  text_color: 0x3D8BFD
+
+    # =========================================================================
+    # ONBOARDING 2b - Wi-Fi password (on-screen keyboard)
+    # =========================================================================
+    - id: pg_wifi_pw
+      skip: true
+      widgets:
+        - button:
+            align: TOP_LEFT
+            x: 12
+            y: 12
+            width: 56
+            height: 56
+            bg_opa: TRANSP
+            on_click:
+              - lvgl.page.show: pg_wifi
+            widgets:
+              - label:
+                  align: CENTER
+                  text: ""
+        - label:
+            id: lbl_pw_title
+            align: TOP_LEFT
+            x: 76
+            y: 26
+            width: 390
+            long_mode: DOT
+            text: "Password"
+            text_font: montserrat_24
+        - textarea:
+            id: ta_pw
+            align: TOP_MID
+            y: 90
+            width: 440
+            height: 60
+            one_line: true
+            password_mode: true
+            max_length: 63
+            placeholder_text: "Wi-Fi password"
+            text_font: montserrat_22
+        - button:
+            align: TOP_MID
+            y: 162
+            width: 220
+            height: 46
+            bg_opa: TRANSP
+            on_click:
+              - lambda: |-
+                  bool pw = lv_textarea_get_password_mode(id(ta_pw));
+                  lv_textarea_set_password_mode(id(ta_pw), !pw);
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "  Show / hide"
+                  text_font: montserrat_18
+                  text_color: 0x8B929C
+        - keyboard:
+            id: kb_pw
+            textarea: ta_pw
+            mode: TEXT_LOWER
+            align: BOTTOM_MID
+            width: 100%
+            height: 260
+            on_ready:
+              - script.execute: connect_wifi
+            on_cancel:
+              - lvgl.page.show: pg_wifi
+
+    # =========================================================================
+    # ONBOARDING 2c - Phone / captive portal / Improv alternative
+    # =========================================================================
+    - id: pg_wifi_phone
+      skip: true
+      widgets:
+        - button:
+            align: TOP_LEFT
+            x: 12
+            y: 12
+            width: 56
+            height: 56
+            bg_opa: TRANSP
+            on_click:
+              - lvgl.page.show: pg_wifi
+            widgets:
+              - label:
+                  align: CENTER
+                  text: ""
+        - label:
+            align: TOP_MID
+            y: 26
+            text: "Set up with your phone"
+            text_font: montserrat_26
+        - qrcode:
+            align: TOP_MID
+            y: 80
+            size: 180
+            light_color: 0xFFFFFF
+            dark_color: 0x000000
+            text: "WIFI:T:nopass;S:Alarm-Keypad-Setup;;"
+        - label:
+            align: TOP_MID
+            y: 280
+            width: 430
+            long_mode: WRAP
+            styles: st_body
+            text_font: montserrat_18
+            text: "1. Scan to join the \"Alarm-Keypad-Setup\" hotspot.\n2. A setup page opens - pick your Wi-Fi and enter the password.\n\nOr add it over Bluetooth: Home Assistant will offer to set up an \"Improv\" device nearby."
+
+    # =========================================================================
+    # ONBOARDING 2d - Connecting spinner
+    # =========================================================================
+    - id: pg_connecting
+      skip: true
+      widgets:
+        - spinner:
+            align: CENTER
+            y: -40
+            width: 90
+            height: 90
+            spin_time: 1s
+            arc_length: 60deg
+            arc_width: 8
+            indicator:
+              arc_color: 0x3D8BFD
+              arc_width: 8
+        - label:
+            id: lbl_conn
+            align: CENTER
+            y: 60
+            width: 420
+            text_align: CENTER
+            long_mode: WRAP
+            text: "Connecting..."
+
+    # =========================================================================
+    # ONBOARDING 3 - Add to Home Assistant
+    # =========================================================================
+    - id: pg_ha
+      skip: true
+      widgets:
+        - label:
+            align: TOP_MID
+            y: 28
+            text: "Add to Home Assistant"
+            styles: st_title
+        - label:
+            align: TOP_MID
+            y: 80
+            text: "Step 2 of 3"
+            styles: st_body
+        - label:
+            id: lbl_ha_info
+            align: TOP_MID
+            y: 125
+            width: 430
+            long_mode: WRAP
+            styles: st_body
+            text: ""
+        - spinner:
+            align: BOTTOM_LEFT
+            x: 60
+            y: -40
+            width: 40
+            height: 40
+            spin_time: 1s
+            arc_length: 60deg
+            arc_width: 5
+            indicator:
+              arc_color: 0x3D8BFD
+              arc_width: 5
+        - label:
+            align: BOTTOM_LEFT
+            x: 115
+            y: -48
+            text: "Waiting for Home Assistant..."
+            text_color: 0x8B929C
+
+    # =========================================================================
+    # ONBOARDING 4 - MQTT login (set from Home Assistant)
+    # =========================================================================
+    - id: pg_link
+      skip: true
+      widgets:
+        - label:
+            align: TOP_MID
+            y: 20
+            text: "Connect to Alarmo"
+            styles: st_title
+        - label:
+            align: TOP_MID
+            y: 66
+            text: "Step 3 of 3 - MQTT login"
+            text_font: montserrat_18
+            text_color: 0xB7BDC6
+        - label:
+            id: lbl_link_info
+            align: TOP_MID
+            y: 104
+            width: 440
+            long_mode: WRAP
+            text_font: montserrat_16
+            text_color: 0xB7BDC6
+            text: ""
+        - spinner:
+            align: BOTTOM_LEFT
+            x: 24
+            y: -18
+            width: 30
+            height: 30
+            spin_time: 1s
+            arc_length: 60deg
+            arc_width: 4
+            indicator:
+              arc_color: 0x3D8BFD
+              arc_width: 4
+        - label:
+            align: BOTTOM_LEFT
+            x: 64
+            y: -24
+            id: lbl_link_status
+            text: "Waiting for Alarmo..."
+            text_font: montserrat_16
+            text_color: 0x8B929C
+        - button:
+            align: BOTTOM_RIGHT
+            x: -16
+            y: -12
+            width: 100
+            height: 44
+            bg_opa: TRANSP
+            on_click:
+              - lvgl.page.show: pg_done
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "Skip"
+                  text_font: montserrat_18
+                  text_color: 0x8B929C
+
+    # =========================================================================
+    # ONBOARDING 5 - Done
+    # =========================================================================
+    - id: pg_done
+      skip: true
+      widgets:
+        - label:
+            align: TOP_MID
+            y: 90
+            text: ""
+            text_font: montserrat_48
+            text_color: 0x1F9D63
+        - label:
+            align: TOP_MID
+            y: 160
+            text: "You're all set"
+            styles: st_title
+        - label:
+            align: TOP_MID
+            y: 215
+            width: 400
+            text_align: CENTER
+            long_mode: WRAP
+            styles: st_body
+            text: "Tap Home or Away to arm. To turn off, type your Alarmo PIN and tap Off. Tap the gear for settings."
+        - button:
+            align: BOTTOM_MID
+            y: -40
+            width: 300
+            height: 64
+            styles: st_primary
+            on_click:
+              - script.execute: finish_onboarding
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "Open keypad"
+
+    # =========================================================================
+    # MAIN - Keypad
+    # =========================================================================
+    - id: pg_keypad
+      widgets:
+        # ---- Status header ------------------------------------------------
+        - obj:
+            id: hdr
+            x: 0
+            y: 0
+            width: 480
+            height: 100
+            radius: 0
+            pad_all: 0
+            bg_color: 0x3A3F47
+            scrollable: false
+            widgets:
+              - label:
+                  id: lbl_state
+                  x: 20
+                  y: 12
+                  width: 340
+                  long_mode: DOT
+                  text: "Starting..."
+                  text_font: montserrat_32
+                  text_color: 0xFFFFFF
+              - label:
+                  id: lbl_sub
+                  x: 20
+                  y: 58
+                  width: 360
+                  long_mode: DOT
+                  text: ""
+                  text_font: montserrat_20
+                  text_color: 0xFFFFFF
+              - label:
+                  id: lbl_icons
+                  align: RIGHT_MID
+                  x: -68
+                  y: 0
+                  text: ""
+                  text_font: montserrat_20
+                  text_color: 0xFFFFFF
+              - button:
+                  id: btn_gear
+                  align: RIGHT_MID
+                  x: -8
+                  y: 0
+                  width: 56
+                  height: 56
+                  bg_opa: TRANSP
+                  shadow_opa: TRANSP
+                  on_click:
+                    - lvgl.page.show: pg_settings
+                  widgets:
+                    - label:
+                        align: CENTER
+                        text: ""
+                        text_font: montserrat_26
+                        text_color: 0xFFFFFF
+
+        # ---- Code entry ---------------------------------------------------
+        - label:
+            id: lbl_code
+            align: TOP_MID
+            y: 110
+            text: "Enter PIN"
+            text_font: montserrat_26
+            text_color: 0x8B929C
+
+        # ---- Digits (3 x 4 grid, 140 x 56, 12/10 px gaps) ------------------
+        - button: {x: 18,  y: 150, width: 140, height: 56, styles: st_digit, on_click: {script.execute: {id: press_key, key: "1"}}, widgets: [label: {align: CENTER, text: "1"}]}
+        - button: {x: 170, y: 150, width: 140, height: 56, styles: st_digit, on_click: {script.execute: {id: press_key, key: "2"}}, widgets: [label: {align: CENTER, text: "2"}]}
+        - button: {x: 322, y: 150, width: 140, height: 56, styles: st_digit, on_click: {script.execute: {id: press_key, key: "3"}}, widgets: [label: {align: CENTER, text: "3"}]}
+        - button: {x: 18,  y: 216, width: 140, height: 56, styles: st_digit, on_click: {script.execute: {id: press_key, key: "4"}}, widgets: [label: {align: CENTER, text: "4"}]}
+        - button: {x: 170, y: 216, width: 140, height: 56, styles: st_digit, on_click: {script.execute: {id: press_key, key: "5"}}, widgets: [label: {align: CENTER, text: "5"}]}
+        - button: {x: 322, y: 216, width: 140, height: 56, styles: st_digit, on_click: {script.execute: {id: press_key, key: "6"}}, widgets: [label: {align: CENTER, text: "6"}]}
+        - button: {x: 18,  y: 282, width: 140, height: 56, styles: st_digit, on_click: {script.execute: {id: press_key, key: "7"}}, widgets: [label: {align: CENTER, text: "7"}]}
+        - button: {x: 170, y: 282, width: 140, height: 56, styles: st_digit, on_click: {script.execute: {id: press_key, key: "8"}}, widgets: [label: {align: CENTER, text: "8"}]}
+        - button: {x: 322, y: 282, width: 140, height: 56, styles: st_digit, on_click: {script.execute: {id: press_key, key: "9"}}, widgets: [label: {align: CENTER, text: "9"}]}
+        - button: {x: 18,  y: 348, width: 140, height: 56, styles: st_action, on_click: {script.execute: {id: press_key, key: "C"}}, widgets: [label: {align: CENTER, text: "Clear"}]}
+        - button: {x: 170, y: 348, width: 140, height: 56, styles: st_digit, on_click: {script.execute: {id: press_key, key: "0"}}, widgets: [label: {align: CENTER, text: "0"}]}
+        - button: {x: 322, y: 348, width: 140, height: 56, styles: st_digit, on_click: {script.execute: {id: press_key, key: "<"}}, widgets: [label: {align: CENTER, text: ""}]}
+
+        # ---- Mode selector: Home | Away | Off (colours set by refresh_ui) ---
+        - button:
+            id: btn_home
+            x: 18
+            y: 414
+            width: 140
+            height: 56
+            styles: st_action
+            bg_color: 0x1A1E24
+            border_width: 2
+            border_color: 0x3A3F47
+            on_click:
+              - script.execute: {id: select_mode, mode: "home"}
+            widgets:
+              - label: {align: CENTER, text: "Home"}
+        - button:
+            id: btn_away
+            x: 170
+            y: 414
+            width: 140
+            height: 56
+            styles: st_action
+            bg_color: 0x1A1E24
+            border_width: 2
+            border_color: 0x3A3F47
+            on_click:
+              - script.execute: {id: select_mode, mode: "away"}
+            widgets:
+              - label: {align: CENTER, text: "Away"}
+        - button:
+            id: btn_off
+            x: 322
+            y: 414
+            width: 140
+            height: 56
+            styles: st_action
+            bg_color: 0x1A1E24
+            border_width: 2
+            border_color: 0x3A3F47
+            on_click:
+              - script.execute: {id: select_mode, mode: "off"}
+            widgets:
+              - label: {align: CENTER, text: "Off"}
+
+    # =========================================================================
+    # MAIN - Settings
+    # =========================================================================
+    - id: pg_settings
+      skip: true
+      on_load:
+        - script.execute: refresh_settings
+      widgets:
+        - button:
+            align: TOP_LEFT
+            x: 12
+            y: 12
+            width: 56
+            height: 56
+            bg_opa: TRANSP
+            on_click:
+              - lvgl.page.show: pg_keypad
+            widgets:
+              - label:
+                  align: CENTER
+                  text: ""
+        - label:
+            align: TOP_LEFT
+            x: 76
+            y: 22
+            text: "Settings"
+            styles: st_title
+        - label:
+            x: 24
+            y: 88
+            text: "Brightness"
+            text_color: 0xB7BDC6
+        - slider:
+            id: sl_bright
+            x: 24
+            y: 124
+            width: 432
+            height: 18
+            min_value: 10
+            max_value: 100
+            value: 80
+            indicator:
+              bg_color: 0x3D8BFD
+            knob:
+              bg_color: 0xECEEF1
+            on_release:
+              - number.set:
+                  id: active_brightness
+                  value: !lambda "return x;"
+              - light.turn_on:
+                  id: backlight
+                  brightness: !lambda "return x / 100.0f;"
+        - label:
+            x: 24
+            y: 164
+            text: "Screen off after"
+            text_color: 0xB7BDC6
+        - dropdown:
+            id: dd_timeout
+            x: 240
+            y: 152
+            width: 216
+            height: 50
+            options: ["15 seconds", "30 seconds", "1 minute", "2 minutes", "5 minutes"]
+            on_change:
+              - number.set:
+                  id: screen_timeout_s
+                  value: !lambda |-
+                    static const int secs[] = {15, 30, 60, 120, 300};
+                    return secs[x < 5 ? x : 1];
+        - label:
+            x: 24
+            y: 226
+            text: "Require PIN to arm"
+            text_color: 0xB7BDC6
+        - switch:
+            id: sw_arm_pin
+            x: 376
+            y: 216
+            width: 80
+            height: 40
+            indicator:
+              checked:
+                bg_color: 0x3D8BFD
+            on_change:
+              - lambda: |-
+                  if (x) id(arm_pin_required).turn_on(); else id(arm_pin_required).turn_off();
+        - label:
+            id: lbl_info
+            x: 24
+            y: 276
+            width: 432
+            long_mode: WRAP
+            text: ""
+            text_font: montserrat_16
+            text_color: 0x8B929C
+            text_line_space: 2
+        - button:
+            x: 24
+            y: 412
+            width: 210
+            height: 56
+            on_long_press:
+              - button.press: rerun_setup_btn
+            widgets:
+              - label: {align: CENTER, text: "Hold: re-run setup", text_font: montserrat_18}
+        - button:
+            x: 246
+            y: 412
+            width: 210
+            height: 56
+            on_long_press:
+              - button.press: restart_btn
+            widgets:
+              - label: {align: CENTER, text: "Hold: restart", text_font: montserrat_18}
+
+# =============================================================================
+# UI scripts
+# =============================================================================
+globals:
+  - id: ob_started
+    type: bool
+    restore_value: false
+    initial_value: "false"
+  - id: screen_asleep
+    type: bool
+    restore_value: false
+    initial_value: "false"
+
+number:
+  - platform: template
+    id: active_brightness
+    name: "Active Brightness"
+    icon: mdi:brightness-7
+    entity_category: config
+    unit_of_measurement: "%"
+    min_value: 10
+    max_value: 100
+    step: 5
+    initial_value: 80
+    restore_value: true
+    optimistic: true
+    mode: slider
+
+script:
+  # ---- Routing ---------------------------------------------------------------
+  - id: boot_route
+    then:
+      - if:
+          condition:
+            lambda: "return id(setup_done);"
+          then:
+            - lvgl.page.show: pg_keypad
+            - script.execute: refresh_ui
+          else:
+            - globals.set:
+                id: ob_started
+                value: "false"
+            - lvgl.page.show: pg_welcome
+      - light.turn_on:
+          id: backlight
+          brightness: !lambda "return id(active_brightness).state / 100.0f;"
+
+  # Moves the onboarding forward to whichever step is next, based on live state.
+  # Safe to call any time; does nothing once setup is done or before "Get started".
+  - id: onboarding_advance
+    mode: queued
+    then:
+      - if:
+          condition:
+            lambda: "return !id(setup_done) && id(ob_started);"
+          then:
+            - if:
+                condition:
+                  lambda: "return id(synced);"
+                then:
+                  - lvgl.page.show: pg_done
+                else:
+                  - if:
+                      condition:
+                        api.connected:
+                          state_subscription_only: true
+                      then:
+                        - script.execute: fill_link_info
+                        - lvgl.page.show: pg_link
+                      else:
+                        - if:
+                            condition:
+                              wifi.connected:
+                            then:
+                              - script.execute: fill_ha_info
+                              - lvgl.page.show: pg_ha
+                            else:
+                              - lvgl.page.show: pg_wifi
+                              - script.execute: fill_wifi_list
+
+  # Home Assistant (ESPHome API) connected - used for onboarding/status only.
+  - id: on_ha_connected
+    mode: restart
+    then:
+      - delay: 1s
+      - script.execute: refresh_status
+      - script.execute: onboarding_advance
+
+  - id: on_wifi_up
+    then:
+      - script.execute: refresh_status
+      - script.execute: onboarding_advance
+
+  - id: finish_onboarding
+    then:
+      - globals.set:
+          id: setup_done
+          value: "true"
+      - lvgl.page.show: pg_keypad
+      - script.execute: refresh_code
+      - script.execute: refresh_ui
+
+  # ---- Wi-Fi onboarding ------------------------------------------------------
+  - id: start_wifi_scan
+    then:
+      - if:
+          condition:
+            not:
+              wifi.connected:
+          then:
+            - lvgl.label.update:
+                id: lbl_wifi_err
+                text: "Scanning..."
+            - lambda: |-
+                wifi::global_wifi_component->start_scanning();
+
+  # Rebuilds the dropdown from the scan-results text sensor ("SSID: -60dB\n...").
+  - id: fill_wifi_list
+    then:
+      - lambda: |-
+          const std::string &raw = id(wifi_scan).state;
+          std::vector<std::string> seen;
+          std::string opts;
+          size_t start = 0;
+          while (start < raw.size()) {
+            size_t nl = raw.find('\n', start);
+            if (nl == std::string::npos) nl = raw.size();
+            std::string line = raw.substr(start, nl - start);
+            start = nl + 1;
+            size_t sep = line.rfind(": ");
+            std::string ssid = sep == std::string::npos ? line : line.substr(0, sep);
+            if (ssid.empty()) continue;
+            if (std::find(seen.begin(), seen.end(), ssid) != seen.end()) continue;
+            seen.push_back(ssid);
+            if (!opts.empty()) opts += "\n";
+            opts += ssid;
+          }
+          if (opts.empty()) opts = "No networks found - tap rescan";
+          lv_dropdown_set_options(id(dd_wifi)->obj, opts.c_str());
+          lv_label_set_text(id(lbl_wifi_err), "");
+
+  - id: wifi_pick_network
+    then:
+      - lambda: |-
+          char buf[64] = {0};
+          lv_dropdown_get_selected_str(id(dd_wifi)->obj, buf, sizeof(buf));
+          std::string s(buf);
+          if (s.empty() || s == "Scanning..." || s.rfind("No networks", 0) == 0) {
+            lv_label_set_text(id(lbl_wifi_err), "Pick a network first");
+            return;
+          }
+          id(chosen_ssid) = s;
+          std::string title = "Password for " + s;
+          lv_label_set_text(id(lbl_pw_title), title.c_str());
+          lv_textarea_set_text(id(ta_pw), "");
+          lv_textarea_set_password_mode(id(ta_pw), true);
+          lv_label_set_text(id(lbl_wifi_err), "");
+      - if:
+          condition:
+            lambda: "return !id(chosen_ssid).empty();"
+          then:
+            - lvgl.page.show: pg_wifi_pw
+
+  - id: connect_wifi
+    then:
+      - lvgl.label.update:
+          id: lbl_conn
+          text: !lambda |-
+            static std::string t;
+            t = "Connecting to " + id(chosen_ssid) + "...";
+            return t.c_str();
+      - lvgl.page.show: pg_connecting
+      - wifi.configure:
+          ssid: !lambda "return id(chosen_ssid);"
+          password: !lambda "return std::string(lv_textarea_get_text(id(ta_pw)));"
+          save: true
+          timeout: 30s
+          on_connect:
+            - lambda: |-
+                lv_textarea_set_text(id(ta_pw), "");
+            - script.execute: on_wifi_up
+          on_error:
+            - lvgl.label.update:
+                id: lbl_wifi_err
+                text: !lambda |-
+                  static std::string t;
+                  t = "Couldn't join " + id(chosen_ssid) + " - check the password and try again.";
+                  return t.c_str();
+            - lvgl.page.show: pg_wifi
+
+  # ---- HA onboarding text ----------------------------------------------------
+  - id: fill_ha_info
+    then:
+      - lambda: |-
+          std::string t =
+            "Home Assistant should pop up a \"New device discovered\" notification.\n\n"
+            "Go to Settings > Devices & services, find the ESPHome device below and tap Add.\n\n"
+            "Device:  " + App.get_friendly_name().str() + "\n"
+            "Address: " + id(ip_addr).state;
+          lv_label_set_text(id(lbl_ha_info), t.c_str());
+
+  - id: fill_link_info
+    then:
+      - lambda: |-
+          std::string t =
+            "1. In Alarmo > General, turn on MQTT with \"Require code\" on.\n\n"
+            "2. In Home Assistant open Settings > Devices > " + App.get_friendly_name().str() +
+            " and fill in under Configuration:\n"
+            "    MQTT Broker, MQTT Port,\n"
+            "    MQTT Username, MQTT Password\n\n"
+            "The keypad continues by itself once Alarmo answers.";
+          lv_label_set_text(id(lbl_link_info), t.c_str());
+          std::string st;
+          if (id(mqtt_user).state.empty()) st = "Waiting for MQTT login...";
+          else if (!id(mqtt_client)->is_connected()) st = "Connecting to " + id(mqtt_broker).state + "...";
+          else st = "Connected - waiting for Alarmo state...";
+          lv_label_set_text(id(lbl_link_status), st.c_str());
+
+  # ---- Screen power ----------------------------------------------------------
+  - id: wake_screen
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: "return id(screen_asleep);"
+          then:
+            - globals.set:
+                id: screen_asleep
+                value: "false"
+            - if:
+                condition: lvgl.is_paused
+                then:
+                  - lvgl.resume:
+                  - lvgl.widget.redraw:
+            - light.turn_on:
+                id: backlight
+                brightness: !lambda "return id(active_brightness).state / 100.0f;"
+                transition_length: 150ms
+
+  - id: sleep_screen
+    then:
+      - if:
+          condition:
+            lambda: |-
+              if (!id(setup_done) || id(screen_asleep)) return false;
+              const auto &s = id(alarm_state);
+              return !(s == "arming" || s == "pending" || s == "triggered");
+          then:
+            - globals.set:
+                id: screen_asleep
+                value: "true"
+            - lambda: "id(code_buf).clear();"
+            - script.execute: refresh_code
+            - lvgl.page.show: pg_keypad
+            - if:
+                condition:
+                  lambda: "return id(idle_brightness).state > 0;"
+                then:
+                  - light.turn_on:
+                      id: backlight
+                      brightness: !lambda "return id(idle_brightness).state / 100.0f;"
+                      transition_length: 1s
+                else:
+                  - light.turn_off:
+                      id: backlight
+                      transition_length: 1s
+                  - delay: 1s
+                  - lvgl.pause:
+
+  # ---- Rendering -------------------------------------------------------------
+  - id: refresh_code
+    then:
+      - lambda: |-
+          const auto &c = id(code_buf);
+          if (c.empty()) {
+            lv_label_set_text(id(lbl_code), "Enter PIN");
+            lv_obj_set_style_text_color(id(lbl_code), lv_color_hex(0x8B929C), LV_PART_MAIN);
+          } else {
+            std::string dots;
+            for (size_t i = 0; i < c.size(); i++) { if (i) dots += "  "; dots += "\xE2\x80\xA2"; }
+            lv_label_set_text(id(lbl_code), dots.c_str());
+            lv_obj_set_style_text_color(id(lbl_code), lv_color_hex(0xECEEF1), LV_PART_MAIN);
+          }
+
+  - id: refresh_status
+    then:
+      - lambda: |-
+          bool wifi = wifi::global_wifi_component->is_connected();
+          bool ha = id(mqtt_client)->is_connected();
+          // Wi-Fi symbol always; "!" when the MQTT broker is not connected.
+          std::string icons = wifi ? "" : "";
+          if (!ha) icons += "  ";
+          lv_label_set_text(id(lbl_icons), icons.c_str());
+      - if:
+          condition:
+            lambda: "return !id(setup_done) && id(ob_started) && !id(synced);"
+          then:
+            - script.execute: fill_link_info
+      - script.execute: refresh_ui
+
+  - id: refresh_ui
+    then:
+      - lambda: |-
+          const std::string &s = id(alarm_state);
+          const bool online = id(mqtt_client)->is_connected();
+          const bool msg_active = id(msg_until) != 0 && millis() < id(msg_until);
+          const int cd = id(countdown);
+
+          std::string title, sub;
+          uint32_t color = 0x3A3F47;  // grey
+
+          if (!online) {
+            title = "Offline";
+            sub = id(mqtt_user).state.empty() ? "Set the MQTT login in Home Assistant"
+                                              : "Can't reach the MQTT broker";
+          } else if (!id(synced)) {
+            title = "Waiting...";
+            sub = "No state from Alarmo - is its MQTT on?";
+          } else if (s == "disarmed") {
+            title = "Off"; sub = id(arm_pin_required).state ? "Enter PIN, then Home or Away" : "Tap Home or Away to arm"; color = 0x1F9D63;
+          } else if (s == "armed_away") {
+            title = "Armed Away"; sub = "Enter PIN and tap Off"; color = 0xD43F48;
+          } else if (s == "armed_home") {
+            title = "Armed Home"; sub = "Enter PIN and tap Off"; color = 0xD43F48;
+          } else if (s == "armed_night") {
+            title = "Armed Night"; color = 0xD43F48;
+          } else if (s == "armed_vacation") {
+            title = "Armed Vacation"; color = 0xD43F48;
+          } else if (s == "armed_custom_bypass") {
+            title = "Armed (Custom)"; color = 0xD43F48;
+          } else if (s == "arming") {
+            title = id(target_mode) == "home" ? "Arming Home" : id(target_mode) == "away" ? "Arming Away" : "Arming";
+            color = 0xD98E12;
+            sub = cd > 0 ? "Leave now - " + std::to_string(cd) + " s" : "Leave now";
+          } else if (s == "pending") {
+            title = "Enter PIN"; color = 0xD98E12;
+            sub = cd > 0 ? "Alarm in " + std::to_string(cd) + " s" : "Alarm about to sound";
+            if (!id(trigger_names).empty()) sub += " - " + id(trigger_names);
+          } else if (s == "triggered") {
+            title = "ALARM"; color = 0xD43F48;
+            sub = id(trigger_names).empty() ? "Enter PIN and tap Off" : id(trigger_names) + " - PIN, then Off";
+          } else {
+            title = "Unavailable"; sub = s;
+          }
+          if (msg_active && !id(alarm_msg).empty()) sub = id(alarm_msg);
+
+          lv_label_set_text(id(lbl_state), title.c_str());
+          lv_label_set_text(id(lbl_sub), sub.c_str());
+          lv_obj_set_style_bg_color(id(hdr), lv_color_hex(color), LV_PART_MAIN);
+
+          // ---- Mode selector ----------------------------------------------
+          // Highlight the current mode: Off green, armed red, arming amber.
+          const std::string &tm = id(target_mode);
+          std::string cur;
+          uint32_t cur_color = 0x1F9D63;
+          if (id(synced) && online) {
+            if (s == "disarmed") { cur = "off"; }
+            else if (s == "arming") { cur = tm; cur_color = 0xD98E12; }
+            else { cur = tm; cur_color = 0xD43F48; }
+          }
+          lv_obj_t *seg[3] = {id(btn_home), id(btn_away), id(btn_off)};
+          const char *names[3] = {"home", "away", "off"};
+          const bool enabled = online && id(synced);
+          for (int i = 0; i < 3; i++) {
+            const bool on = cur == names[i];
+            lv_obj_set_style_bg_color(seg[i], lv_color_hex(on ? cur_color : 0x1A1E24), LV_PART_MAIN);
+            lv_obj_set_style_border_color(seg[i], lv_color_hex(on ? cur_color : 0x3A3F47), LV_PART_MAIN);
+            if (enabled) lv_obj_clear_state(seg[i], LV_STATE_DISABLED);
+            else lv_obj_add_state(seg[i], LV_STATE_DISABLED);
+          }
+          // Mirror the header to HA (diagnostic) - never contains the code.
+          std::string shown = title + (sub.empty() ? "" : " | " + sub) + " [" + (cur.empty() ? "-" : cur) + "]";
+          if (id(screen_status).state != shown) id(screen_status).publish_state(shown);
+
+  - id: refresh_settings
+    then:
+      - lambda: |-
+          lv_slider_set_value(id(sl_bright), (int) id(active_brightness).state, LV_ANIM_OFF);
+          int t = (int) id(screen_timeout_s).state;
+          int idx = t <= 15 ? 0 : t <= 30 ? 1 : t <= 60 ? 2 : t <= 120 ? 3 : 4;
+          lv_dropdown_set_selected(id(dd_timeout)->obj, idx);
+          if (id(arm_pin_required).state) lv_obj_add_state(id(sw_arm_pin), LV_STATE_CHECKED);
+          else lv_obj_clear_state(id(sw_arm_pin), LV_STATE_CHECKED);
+          std::string info =
+            "Device:    " + App.get_friendly_name().str() + "\n"
+            "Wi-Fi:     " + id(wifi_ssid).state + "\n"
+            "IP:        " + id(ip_addr).state + "\n"
+            "HA:        " + std::string(id(api_server)->is_connected_with_state_subscription() ? "connected" : "not connected") + "\n"
+            "MQTT:      " + (id(mqtt_client)->is_connected() ? id(mqtt_broker).state : std::string("not connected")) + "\n"
+            "Firmware:  ${project_version}  (ESPHome " ESPHOME_VERSION ")";
+          lv_label_set_text(id(lbl_info), info.c_str());

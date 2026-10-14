@@ -1,0 +1,14 @@
+__pycache__/
+.DS_Store
+.esphome/
+.venv/
+*.bin
+*.elf
+/alarm-keypad-*/
+/output/
+/secrets.yaml
+/site/
+# build-action output folders
+# ESPHome build output
+test-credentials.local.md
+SenseCAP-Alarm-Keypad-Handoff.md

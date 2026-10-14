@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SenseCAP Alarm Keypad Installer</title>
+  <script type="module" src="https://unpkg.com/esp-web-tools@10.4.0/dist/web/install-button.js?module"></script>
+  <style>
+    :root { --bg:#0e1013; --card:#1a1e24; --text:#eceef1; --muted:#8b929c; --accent:#3d8bfd; }
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme="dark"]) { --bg:#f6f7f9; --card:#ffffff; --text:#14171a; --muted:#5b636e; }
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 680px; margin: 0 auto; padding: 48px 16px; }
+    h1 { font-size: 1.9rem; margin: 0 0 8px; }
+    p.lead { color: var(--muted); margin: 0 0 28px; }
+    .card { background: var(--card); border-radius: 14px; padding: 24px; margin-bottom: 20px; }
+    ol { padding-left: 1.2em; margin: 0; }
+    li { margin: 6px 0; }
+    code { background: rgba(127,127,127,.15); padding: 1px 6px; border-radius: 5px; }
+    a { color: var(--accent); }
+    esp-web-install-button button[slot="activate"] {
+      background: var(--accent); color: #fff; border: 0; border-radius: 10px;
+      padding: 14px 26px; font-size: 1.05rem; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>SenseCAP Alarm Keypad</h1>
+  <p class="lead">Turn a Seeed SenseCAP Indicator D1 into a wall keypad for Alarmo in Home Assistant.</p>
+
+  <div class="card">
+    <ol>
+      <li>Plug the Indicator into this computer with a USB-C data cable.</li>
+      <li>Use Chrome or Edge on a desktop computer (Web Serial is required).</li>
+      <li>Click <strong>Install</strong> and choose the serial port.</li>
+      <li>After flashing you can enter Wi-Fi here, or skip it and set up Wi-Fi on the keypad's screen.</li>
+    </ol>
+    <p style="margin-top:22px">
+      <esp-web-install-button manifest="firmware/manifest.json">
+        <button slot="activate">Install</button>
+        <span slot="unsupported">Your browser doesn't support Web Serial. Use Chrome or Edge on a desktop.</span>
+        <span slot="not-allowed">This page must be opened over HTTPS.</span>
+      </esp-web-install-button>
+    </p>
+  </div>
+
+  <div class="card">
+    <strong>Then, on the keypad:</strong>
+    <ol>
+      <li>Connect to Wi-Fi (on screen, or with your phone via the QR code).</li>
+      <li>Add the discovered ESPHome device in Home Assistant.</li>
+      <li>Scan the QR code to import the Alarmo bridge blueprint and create an automation.</li>
+    </ol>
+    <p>Full guide: <a href="https://github.com/DomMonte/sensecap-alarm-keypad">github.com/DomMonte/sensecap-alarm-keypad</a></p>
+  </div>
+</main>
+</body>
+</html>

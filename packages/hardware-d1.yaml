@@ -1,0 +1,102 @@
+# -----------------------------------------------------------------------------
+# SenseCAP Indicator D1 - hardware definition (ESP32-S3 side only)
+# Pins taken from https://devices.esphome.io/devices/seeed-sensecap/
+# The RP2040 co-processor (buzzer, SD, Grove) is not used in v1.
+# -----------------------------------------------------------------------------
+
+esp32:
+  variant: esp32s3
+  flash_size: 8MB
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESPTOOLPY_FLASHSIZE_8MB: y
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: y
+      CONFIG_ESP32S3_DATA_CACHE_64KB: y
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_SPIRAM_RODATA: y
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+logger:
+  hardware_uart: UART0
+  level: INFO
+
+i2c:
+  - id: bus_a
+    sda: GPIO39
+    scl: GPIO40
+    scan: false
+
+spi:
+  - id: lcd_spi
+    clk_pin: GPIO41
+    mosi_pin: GPIO48
+    miso_pin: GPIO47
+
+pca9554:
+  - id: pca9554a_device
+    address: 0x20
+    pin_count: 16
+
+display:
+  - platform: mipi_rgb
+    model: SEEED-INDICATOR-D1
+    id: main_display
+    auto_clear_enabled: false
+    update_interval: never
+
+output:
+  - platform: ledc
+    id: backlight_pwm
+    pin:
+      number: GPIO45
+      ignore_strapping_warning: true
+    frequency: 1000Hz
+
+light:
+  - platform: monochromatic
+    id: backlight
+    name: "Backlight"
+    icon: mdi:brightness-6
+    entity_category: config
+    output: backlight_pwm
+    default_transition_length: 250ms
+    restore_mode: ALWAYS_ON
+
+touchscreen:
+  - platform: ft5x06
+    id: main_touch
+    display: main_display
+    transform:
+      mirror_x: true
+      mirror_y: true
+    on_touch:
+      - script.execute: wake_screen
+
+binary_sensor:
+  # Physical button on the right-hand side of the case.
+  #  - short press  : wake the screen
+  #  - hold 10 s    : factory reset (wipes Wi-Fi + settings, restarts onboarding)
+  - platform: gpio
+    id: user_button
+    name: "User Button"
+    entity_category: diagnostic
+    pin:
+      number: GPIO38
+      inverted: true
+    on_click:
+      - min_length: 50ms
+        max_length: 1s
+        then:
+          - script.execute: wake_screen
+    on_press:
+      - delay: 10s
+      - if:
+          condition:
+            binary_sensor.is_on: user_button
+          then:
+            - logger.log: "User button held 10 s - factory reset"
+            - button.press: factory_reset_btn

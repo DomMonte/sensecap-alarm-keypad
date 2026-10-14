@@ -1,0 +1,100 @@
+name: Build firmware
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ESPHOME_VERSION: "2026.9.1"
+
+jobs:
+  validate-blueprint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: YAML lint blueprint
+        run: |
+          python3 - <<'PY'
+          import yaml, sys
+          class L(yaml.SafeLoader): pass
+          L.add_constructor('!input', lambda l, n: l.construct_scalar(n))
+          for p in ["blueprints/automation/alarmo-keypad-bridge.yaml"]:
+              yaml.load(open(p), Loader=L)
+              print("ok", p)
+          PY
+
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      name: ${{ steps.esphome-build.outputs.name }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build
+        id: esphome-build
+        uses: esphome/build-action@v8.1.0
+        with:
+          yaml-file: sensecap-alarm-keypad.yaml
+          version: ${{ env.ESPHOME_VERSION }}
+          complete-manifest: true
+          release-summary: ${{ github.event.release.name }}
+          release-url: ${{ github.event.release.html_url }}
+
+      - name: Collect firmware
+        run: |
+          mkdir -p output/firmware
+          cp -r "${{ steps.esphome-build.outputs.name }}"/* output/firmware/
+          ls -la output/firmware
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: firmware
+          path: output
+          retention-days: 14
+
+  publish:
+    # Only real releases go to users (web installer + HA update entity).
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    needs: [validate-blueprint, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: firmware
+          path: output
+
+      - name: Assemble site
+        run: |
+          mkdir -p site
+          cp -r installer/* site/
+          cp -r output/firmware site/firmware
+
+      - name: Attach binaries to the GitHub release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" output/firmware/*.bin --clobber
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

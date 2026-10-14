@@ -1,0 +1,397 @@
+# -----------------------------------------------------------------------------
+# Alarmo <-> keypad bridge over MQTT
+#
+# Uses Alarmo's built-in MQTT support (Alarmo > General > MQTT, enabled,
+# "Require code" on, default topics/payloads). No automation or blueprint.
+#
+#   <prefix>/state    (retained)  disarmed | arming | armed_home | armed_away |
+#                                 pending | triggered | ...
+#   <prefix>/event    (JSON)      ARM_AWAY/ARM_HOME {delay}, TRIGGER {delay, sensors},
+#                                 FAILED_TO_ARM {sensors}, INVALID_CODE_PROVIDED,
+#                                 NO_CODE_PROVIDED, COMMAND_NOT_ALLOWED
+#   <prefix>/command  (published) {"command":"ARM_HOME|ARM_AWAY|DISARM","code":"..."}
+#
+# The broker login is not compiled in. It is set from Home Assistant through the
+# config entities below (stored in flash) and applied at runtime.
+# -----------------------------------------------------------------------------
+
+mqtt:
+  id: mqtt_client
+  # Placeholder - replaced at runtime from the "MQTT Broker" entity.
+  broker: homeassistant.local
+  enable_on_boot: false
+  # Only used to talk to Alarmo: no discovery, no entity state topics, no logs.
+  discovery: false
+  topic_prefix: null
+  log_topic: null
+  birth_message:
+  will_message:
+  shutdown_message:
+  reboot_timeout: 0s
+  on_connect:
+    - script.execute: refresh_status
+  on_disconnect:
+    - script.execute: refresh_status
+
+globals:
+  - id: cmd_error
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+  # Topic prefix the subscriptions currently use (to unsubscribe on change).
+  - id: subscribed_prefix
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+  # Sensors that started the entry delay / alarm (shown next to the countdown).
+  - id: trigger_names
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+  # Mode the alarm is armed in / arming towards: "home", "away" or "" (off).
+  - id: target_mode
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+
+text:
+  - platform: template
+    id: mqtt_broker
+    name: "MQTT Broker"
+    icon: mdi:server-network
+    entity_category: config
+    mode: text
+    optimistic: true
+    restore_value: true
+    initial_value: "homeassistant.local"
+    max_length: 64
+    on_value:
+      - script.execute: mqtt_apply
+  - platform: template
+    id: mqtt_user
+    name: "MQTT Username"
+    icon: mdi:account
+    entity_category: config
+    mode: text
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    max_length: 64
+    on_value:
+      - script.execute: mqtt_apply
+  - platform: template
+    id: mqtt_pass
+    name: "MQTT Password"
+    icon: mdi:form-textbox-password
+    entity_category: config
+    mode: password
+    optimistic: true
+    restore_value: true
+    initial_value: ""
+    max_length: 64
+    on_value:
+      - script.execute: mqtt_apply
+  - platform: template
+    id: alarmo_prefix
+    name: "Alarmo Topic Prefix"
+    icon: mdi:shield-home
+    entity_category: config
+    mode: text
+    optimistic: true
+    restore_value: true
+    initial_value: "alarmo"
+    max_length: 64
+    on_value:
+      - script.execute: mqtt_apply
+
+number:
+  - platform: template
+    id: mqtt_port
+    name: "MQTT Port"
+    icon: mdi:ethernet
+    entity_category: config
+    min_value: 1
+    max_value: 65535
+    step: 1
+    initial_value: 1883
+    restore_value: true
+    optimistic: true
+    mode: box
+    on_value:
+      - script.execute: mqtt_apply
+
+switch:
+  # Keypad-side rule only. For Alarmo to actually check the PIN when arming,
+  # also turn on "Use arm code" in Alarmo > General.
+  - platform: template
+    id: arm_pin_required
+    name: "Require PIN to Arm"
+    icon: mdi:form-textbox-password
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - script.execute: refresh_settings
+      - script.execute: refresh_ui
+    on_turn_off:
+      - script.execute: refresh_settings
+      - script.execute: refresh_ui
+
+text_sensor:
+  # What the header shows + highlighted mode, for checking the keypad from HA.
+  - platform: template
+    id: screen_status
+    name: "Screen Status"
+    icon: mdi:monitor
+    entity_category: diagnostic
+
+binary_sensor:
+  - platform: template
+    id: mqtt_connected
+    name: "MQTT Connected"
+    device_class: connectivity
+    entity_category: diagnostic
+    lambda: "return id(mqtt_client)->is_connected();"
+
+script:
+  # (Re)configure the MQTT client from the config entities. Debounced so that
+  # filling in several fields in a row only reconnects once.
+  - id: mqtt_apply
+    mode: restart
+    then:
+      - delay: 2s
+      - lambda: |-
+          auto *m = id(mqtt_client);
+          m->disable();
+          const std::string host = id(mqtt_broker).state;
+          const std::string user = id(mqtt_user).state;
+          if (host.empty() || user.empty()) {
+            ESP_LOGW("alarmo", "MQTT not configured - set MQTT Broker/Username/Password in Home Assistant");
+            id(synced) = false;
+            return;
+          }
+          m->set_broker_address(host);
+          m->set_broker_port((uint16_t) id(mqtt_port).state);
+          m->set_username(user);
+          m->set_password(id(mqtt_pass).state);
+
+          // Move subscriptions to the (possibly new) topic prefix.
+          std::string prefix = id(alarmo_prefix).state;
+          if (prefix.empty()) prefix = "alarmo";
+          if (prefix != id(subscribed_prefix)) {
+            if (!id(subscribed_prefix).empty()) {
+              m->unsubscribe(id(subscribed_prefix) + "/state");
+              m->unsubscribe(id(subscribed_prefix) + "/event");
+            }
+            id(synced) = false;
+            m->subscribe(prefix + "/state", [](const std::string &topic, const std::string &payload) {
+              id(on_alarm_state).execute(payload);
+            });
+            m->subscribe(prefix + "/event", [](const std::string &topic, const std::string &payload) {
+              id(on_alarm_event).execute(payload);
+            });
+            id(subscribed_prefix) = prefix;
+          }
+          ESP_LOGI("alarmo", "MQTT -> %s:%d as '%s', topics %s/#", host.c_str(),
+                   (int) id(mqtt_port).state, user.c_str(), prefix.c_str());
+          m->enable();
+      - script.execute: refresh_status
+
+  # Retained state from Alarmo.
+  - id: on_alarm_state
+    mode: queued
+    parameters:
+      state: string
+    then:
+      - lambda: |-
+          if (state.empty()) return;
+          const std::string prev = id(alarm_state);
+          id(alarm_state) = state;
+          const bool first = !id(synced);
+          id(synced) = true;
+          if (state == "disarmed") {
+            id(target_mode) = "";
+            id(countdown) = 0;
+          } else if (state == "armed_home") {
+            id(target_mode) = "home";
+            id(countdown) = 0;
+          } else if (state == "armed_away") {
+            id(target_mode) = "away";
+            id(countdown) = 0;
+          } else if (state.rfind("armed_", 0) == 0) {
+            id(target_mode) = state.substr(6);
+            id(countdown) = 0;
+          } else if (state == "triggered") {
+            id(countdown) = 0;
+          }
+          if (state != "pending" && state != "triggered") id(trigger_names) = "";
+          if (prev != state && !first) {
+            // A state change means the last command worked (or the alarm moved on
+            // its own) - drop "Sending..." and reset the wrong-PIN counter. Other
+            // messages (e.g. from the event that came just before) stay.
+            id(wrong_attempts) = 0;
+            if (id(alarm_msg) == "Sending...") id(msg_until) = 0;
+          }
+          ESP_LOGI("alarmo", "Alarm %s -> %s", prev.c_str(), state.c_str());
+      - if:
+          condition:
+            lambda: |-
+              const auto &s = id(alarm_state);
+              return s == "pending" || s == "triggered" || s == "arming";
+          then:
+            - script.execute: wake_screen
+      - script.execute: onboarding_advance
+      - script.execute: refresh_ui
+
+  # Event JSON from Alarmo.
+  - id: on_alarm_event
+    mode: queued
+    parameters:
+      payload: string
+    then:
+      - lambda: |-
+          JsonDocument doc;
+          if (deserializeJson(doc, payload) != DeserializationError::Ok) {
+            ESP_LOGW("alarmo", "Ignoring malformed event");
+            return;
+          }
+          const std::string ev = doc["event"] | "";
+          auto names = [&doc]() {
+            std::string out;
+            for (JsonObject s : doc["sensors"].as<JsonArray>()) {
+              const char *n = s["name"] | (s["entity_id"] | "");
+              if (!out.empty()) out += ", ";
+              out += n;
+            }
+            return out;
+          };
+          std::string msg;
+          if (ev.rfind("ARM_", 0) == 0) {
+            std::string mode = ev.substr(4);
+            for (auto &c : mode) c = tolower(c);
+            id(target_mode) = mode;
+            id(countdown) = doc["delay"] | 0;
+          } else if (ev == "TRIGGER") {
+            id(countdown) = doc["delay"] | 0;
+            const std::string n = names();
+            if (!n.empty()) id(trigger_names) = n;
+          } else if (ev == "FAILED_TO_ARM") {
+            const std::string n = names();
+            msg = n.empty() ? "Can't arm - a sensor is open" : "Close first: " + n;
+          } else if (ev == "INVALID_CODE_PROVIDED") {
+            msg = "Wrong PIN";
+            id(wrong_attempts)++;
+            if (id(wrong_attempts) >= 5) {
+              id(lockout_until) = millis() + 60000;
+              id(wrong_attempts) = 0;
+              msg = "Wrong PIN - keypad locked for 60 s";
+            }
+          } else if (ev == "NO_CODE_PROVIDED") {
+            msg = "PIN required";
+          } else if (ev == "COMMAND_NOT_ALLOWED") {
+            msg = "Not allowed right now";
+          } else {
+            return;
+          }
+          if (msg.size() > 180) msg.resize(180);
+          if (!msg.empty()) {
+            id(alarm_msg) = msg;
+            id(msg_until) = millis() + 8000;
+          }
+          ESP_LOGI("alarmo", "Event %s", ev.c_str());
+      - script.execute: refresh_ui
+
+  # Keypad digit / clear / backspace.
+  - id: press_key
+    mode: queued
+    parameters:
+      key: string
+    then:
+      - lambda: |-
+          auto &c = id(code_buf);
+          if (key == "C") {
+            c.clear();
+          } else if (key == "<") {
+            if (!c.empty()) c.pop_back();
+          } else if (c.size() < 10) {
+            c += key;
+          }
+      - script.execute: refresh_code
+
+  # Mode selector. mode = home | away | off
+  - id: select_mode
+    mode: queued
+    parameters:
+      mode: string
+    then:
+      - lambda: |-
+          const std::string &s = id(alarm_state);
+          const bool is_off = s == "disarmed";
+          std::string err;
+          if (millis() < id(lockout_until)) {
+            err = "Too many wrong PINs - wait a minute";
+          } else if (!id(mqtt_client)->is_connected()) {
+            err = "Offline - can't reach Alarmo";
+          } else if (!id(synced)) {
+            err = "Waiting for Alarmo";
+          } else if (mode == "off" && is_off) {
+            err = "Already off";
+          } else if (mode != "off" && s == "armed_" + mode) {
+            err = "Already armed " + std::string(mode == "home" ? "Home" : "Away");
+          } else if (mode != "off" && !is_off) {
+            err = "Turn the alarm off first";
+          } else if (id(code_buf).empty() && (mode == "off" || id(arm_pin_required).state)) {
+            // Disarming always needs a PIN; arming only when "Require PIN to arm" is on.
+            err = mode == "off" ? "Enter your PIN to turn off" : "Enter your PIN first";
+          }
+          id(cmd_error) = err;
+      - if:
+          condition:
+            lambda: "return id(cmd_error).empty();"
+          then:
+            - mqtt.publish:
+                topic: !lambda |-
+                  std::string p = id(alarmo_prefix).state;
+                  return (p.empty() ? std::string("alarmo") : p) + "/command";
+                payload: !lambda |-
+                  const char *cmd = mode == "home" ? "ARM_HOME" : mode == "away" ? "ARM_AWAY" : "DISARM";
+                  std::string out = std::string("{\"command\":\"") + cmd + "\"";
+                  if (!id(code_buf).empty()) out += ",\"code\":\"" + id(code_buf) + "\"";
+                  return out + "}";
+                qos: 1
+                retain: false
+            - lambda: "id(code_buf).clear();"
+            - script.execute: refresh_code
+            - script.execute:
+                id: show_message
+                text: "Sending..."
+          else:
+            - script.execute:
+                id: show_message
+                text: !lambda "return id(cmd_error);"
+
+  - id: show_message
+    mode: restart
+    parameters:
+      text: string
+    then:
+      - lambda: |-
+          id(alarm_msg) = text;
+          id(msg_until) = millis() + 5000;
+      - script.execute: refresh_ui
+
+interval:
+  # Local countdown + message expiry. Alarmo resends state on every change.
+  - interval: 1s
+    then:
+      - lambda: |-
+          bool dirty = false;
+          if (id(countdown) > 0) {
+            id(countdown)--;
+            dirty = true;
+          }
+          if (id(msg_until) != 0 && millis() > id(msg_until)) {
+            id(msg_until) = 0;
+            dirty = true;
+          }
+          if (dirty) id(refresh_ui).execute();

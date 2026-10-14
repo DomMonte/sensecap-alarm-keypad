@@ -1,0 +1,216 @@
+# -----------------------------------------------------------------------------
+# Core: networking, provisioning, Home Assistant API, OTA, persistent state.
+# Nothing in here is specific to one household - no Wi-Fi credentials or keys
+# are compiled in, so the same binary can be flashed by anyone.
+# -----------------------------------------------------------------------------
+
+esphome:
+  name: ${name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: true
+  min_version: 2026.9.0
+  project:
+    name: ${project_name}
+    version: ${project_version}
+  on_boot:
+    # Run after LVGL and Wi-Fi are up so pages exist before we navigate.
+    priority: -100
+    then:
+      - script.execute: boot_route
+      - script.execute: mqtt_apply
+
+# Lets people "Take control" of the device from the ESPHome dashboard.
+dashboard_import:
+  package_import_url: github://${github_repo}/sensecap-alarm-keypad.yaml@main
+  import_full_config: false
+
+# ---- Wi-Fi ------------------------------------------------------------------
+# No networks are compiled in. Credentials come from (any of):
+#   1. On-screen onboarding (wifi.configure, saved to flash)
+#   2. Improv over Bluetooth (Home Assistant / ESPHome app / web.esphome.io)
+#   3. Improv over USB serial (the web installer offers this after flashing)
+#   4. The fallback hotspot + captive portal (QR code on the Wi-Fi screen)
+wifi:
+  id: wifi_comp
+  # Never reboot while the user is still onboarding.
+  reboot_timeout: 0s
+  ap:
+    ssid: "Alarm-Keypad-Setup"
+    ap_timeout: 30s
+  on_connect:
+    - script.execute: on_wifi_up
+  on_disconnect:
+    - script.execute: refresh_status
+
+captive_portal:
+
+esp32_improv:
+  authorizer: none
+
+improv_serial:
+
+# ---- Home Assistant API -----------------------------------------------------
+# Encryption is on, but no key is compiled in: Home Assistant provisions a
+# unique key when the user adds the device (ESPHome 2025.x+ behaviour).
+api:
+  id: api_server
+  reboot_timeout: 0s
+  encryption: {}
+  on_client_connected:
+    - script.execute: on_ha_connected
+  on_client_disconnected:
+    - script.execute: refresh_status
+
+ota:
+  - platform: esphome
+    id: ota_esphome
+  - platform: http_request
+    id: ota_http
+
+http_request:
+  verify_ssl: true
+
+# Firmware update entity in Home Assistant, fed by the GitHub Pages manifest
+# that the release workflow publishes.
+update:
+  - platform: http_request
+    name: "Firmware"
+    source: ${update_manifest_url}
+
+safe_mode:
+
+time:
+  - platform: homeassistant
+    id: ha_time
+
+# ---- Persistent + runtime state --------------------------------------------
+globals:
+  # Onboarding finished? Persisted so a power cut doesn't restart onboarding.
+  - id: setup_done
+    type: bool
+    restore_value: true
+    initial_value: "false"
+  # Code being typed on the keypad (never persisted, never logged).
+  - id: code_buf
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+  # Latest alarm state from Alarmo (MQTT).
+  - id: alarm_state
+    type: std::string
+    restore_value: false
+    initial_value: '"unknown"'
+  # Seconds left on exit/entry delay (counted down locally, resynced by HA).
+  - id: countdown
+    type: int
+    restore_value: false
+    initial_value: "0"
+  # Free-text message (open sensors, wrong PIN, ...).
+  - id: alarm_msg
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+  # millis() until which the transient message stays visible.
+  - id: msg_until
+    type: uint32_t
+    restore_value: false
+    initial_value: "0"
+  # Has Alarmo's state arrived over MQTT since (re)subscribing?
+  - id: synced
+    type: bool
+    restore_value: false
+    initial_value: "false"
+  # Local brute-force protection (on top of Alarmo's own handling).
+  - id: wrong_attempts
+    type: int
+    restore_value: false
+    initial_value: "0"
+  - id: lockout_until
+    type: uint32_t
+    restore_value: false
+    initial_value: "0"
+  # SSID picked on the Wi-Fi screen.
+  - id: chosen_ssid
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+
+# ---- User-tunable settings (exposed to HA and the on-device settings page) --
+number:
+  - platform: template
+    id: screen_timeout_s
+    name: "Screen Timeout"
+    icon: mdi:timer-outline
+    entity_category: config
+    unit_of_measurement: s
+    min_value: 10
+    max_value: 600
+    step: 5
+    initial_value: 30
+    restore_value: true
+    optimistic: true
+    mode: box
+  - platform: template
+    id: idle_brightness
+    name: "Idle Brightness"
+    icon: mdi:brightness-4
+    entity_category: config
+    unit_of_measurement: "%"
+    min_value: 0
+    max_value: 50
+    step: 5
+    initial_value: 0
+    restore_value: true
+    optimistic: true
+    mode: slider
+
+button:
+  - platform: restart
+    id: restart_btn
+    name: "Restart"
+    entity_category: config
+  - platform: factory_reset
+    id: factory_reset_btn
+    name: "Factory Reset"
+    entity_category: config
+    disabled_by_default: true
+  - platform: template
+    id: rerun_setup_btn
+    name: "Re-run Onboarding"
+    icon: mdi:restart
+    entity_category: config
+    on_press:
+      - globals.set:
+          id: setup_done
+          value: "false"
+      - script.execute: boot_route
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      id: ip_addr
+      name: "IP Address"
+      entity_category: diagnostic
+    ssid:
+      id: wifi_ssid
+      name: "Wi-Fi SSID"
+      entity_category: diagnostic
+    scan_results:
+      id: wifi_scan
+      internal: true
+      on_value:
+        - script.execute: fill_wifi_list
+  - platform: version
+    name: "ESPHome Version"
+    hide_timestamp: true
+    entity_category: diagnostic
+
+sensor:
+  - platform: wifi_signal
+    name: "Wi-Fi Signal"
+    entity_category: diagnostic
+    update_interval: 60s
+  - platform: uptime
+    name: "Uptime"
+    entity_category: diagnostic
+    update_interval: 300s
