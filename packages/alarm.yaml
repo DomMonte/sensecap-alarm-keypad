@@ -109,6 +109,23 @@ switch:
     on_turn_off:
       - script.execute: prefs_changed
 
+number:
+  # Alarmo PIN length: the PIN pad sends as soon as this many digits are typed.
+  - platform: template
+    id: pin_length
+    name: "PIN Length"
+    icon: mdi:numeric
+    entity_category: config
+    min_value: 3
+    max_value: 8
+    step: 1
+    initial_value: 4
+    restore_value: true
+    optimistic: true
+    mode: box
+    on_value:
+      - script.execute: refresh_pin
+
 text_sensor:
   # Mirror of what the main screen shows, for checking the keypad from HA.
   - platform: template
@@ -257,11 +274,18 @@ script:
           auto &c = id(code_buf);
           if (key == "C") c.clear();
           else if (key == "<") { if (!c.empty()) c.pop_back(); }
-          else if (c.size() < 10) c += key;
+          else if (c.size() < (size_t) id(pin_length).state) c += key;
           id(pin_last_touch) = millis();
       - script.execute: refresh_pin
+      # Send as soon as the full PIN is in.
+      - if:
+          condition:
+            lambda: "return key != \"C\" && key != \"<\" && id(code_buf).size() >= (size_t) id(pin_length).state;"
+          then:
+            - delay: 150ms
+            - script.execute: pin_confirm
 
-  # PIN pad confirm button.
+  # Full PIN entered.
   - id: pin_confirm
     then:
       - if:

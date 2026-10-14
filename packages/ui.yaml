@@ -830,3 +830,17 @@ script:
             "MQTT:      " + (id(mqtt_client)->is_connected() ? id(mqtt_broker).state : std::string("not connected")) + "\n"
             "Firmware:  ${project_version}  (ESPHome " ESPHOME_VERSION ")";
           lv_label_set_text(id(lbl_info), info.c_str());
+
+interval:
+  # Keep the UI's link flags in step with Wi-Fi/MQTT (connect callbacks can fire
+  # before is_connected() flips, so don't rely on them alone).
+  - interval: 1s
+    then:
+      - lambda: |-
+          const bool w = wifi::global_wifi_component->is_connected();
+          const bool m = id(mqtt_client)->is_connected();
+          if (w != id(link_wifi) || m != id(link_mqtt)) {
+            id(link_wifi) = w;
+            id(link_mqtt) = m;
+            id(refresh_ui).execute();
+          }

@@ -202,43 +202,26 @@ lvgl:
             long_mode: DOT
             text: ""
             text_font: f_sg_16
-        - label:
-            id: lbl_pin
-            align: TOP_MID
-            y: 66
-            text: ""
-            text_font: f_sg_30
-            text_letter_space: 10
-        - button: {x: 18,  y: 112, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "1"}}, widgets: [label: {align: CENTER, text: "1", text_font: f_sg_30}]}
-        - button: {x: 170, y: 112, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "2"}}, widgets: [label: {align: CENTER, text: "2", text_font: f_sg_30}]}
-        - button: {x: 322, y: 112, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "3"}}, widgets: [label: {align: CENTER, text: "3", text_font: f_sg_30}]}
-        - button: {x: 18,  y: 176, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "4"}}, widgets: [label: {align: CENTER, text: "4", text_font: f_sg_30}]}
-        - button: {x: 170, y: 176, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "5"}}, widgets: [label: {align: CENTER, text: "5", text_font: f_sg_30}]}
-        - button: {x: 322, y: 176, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "6"}}, widgets: [label: {align: CENTER, text: "6", text_font: f_sg_30}]}
-        - button: {x: 18,  y: 240, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "7"}}, widgets: [label: {align: CENTER, text: "7", text_font: f_sg_30}]}
-        - button: {x: 170, y: 240, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "8"}}, widgets: [label: {align: CENTER, text: "8", text_font: f_sg_30}]}
-        - button: {x: 322, y: 240, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "9"}}, widgets: [label: {align: CENTER, text: "9", text_font: f_sg_30}]}
-        - button: {x: 18,  y: 304, width: 140, height: 56, styles: st_key, bg_opa: TRANSP, border_width: 0, pressed: {bg_color: 0x2A2A2A, bg_opa: COVER}, on_click: {script.execute: {id: press_key, key: "C"}}, widgets: [label: {align: CENTER, text: "CLEAR", styles: st_eyebrow}]}
-        - button: {x: 170, y: 304, width: 140, height: 56, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "0"}}, widgets: [label: {align: CENTER, text: "0", text_font: f_sg_30}]}
-        - button: {x: 322, y: 304, width: 140, height: 56, styles: st_key, bg_opa: TRANSP, border_width: 0, pressed: {bg_color: 0x2A2A2A, bg_opa: COVER}, on_click: {script.execute: {id: press_key, key: "<"}}, widgets: [label: {align: CENTER, text: "", text_font: montserrat_24, text_color: 0x8C8C8C}]}
-        - button:
-            x: 18
-            y: 376
-            width: 444
-            height: 86
-            styles: st_primary
-            pressed:
-              bg_color: 0xC8C8C8
-            on_click:
-              - script.execute: pin_confirm
-            widgets:
-              - label:
-                  id: lbl_pin_go
-                  align: CENTER
-                  text: "DISARM"
-                  text_font: f_sg_22b
-                  text_color: 0x0A0A0A
-                  text_letter_space: 4
+        - obj: {id: pd0, x: 0, y: 84, width: 16, height: 16, radius: 8, bg_color: 0x2A2A2A, border_width: 0, scrollable: false, hidden: true}
+        - obj: {id: pd1, x: 0, y: 84, width: 16, height: 16, radius: 8, bg_color: 0x2A2A2A, border_width: 0, scrollable: false, hidden: true}
+        - obj: {id: pd2, x: 0, y: 84, width: 16, height: 16, radius: 8, bg_color: 0x2A2A2A, border_width: 0, scrollable: false, hidden: true}
+        - obj: {id: pd3, x: 0, y: 84, width: 16, height: 16, radius: 8, bg_color: 0x2A2A2A, border_width: 0, scrollable: false, hidden: true}
+        - obj: {id: pd4, x: 0, y: 84, width: 16, height: 16, radius: 8, bg_color: 0x2A2A2A, border_width: 0, scrollable: false, hidden: true}
+        - obj: {id: pd5, x: 0, y: 84, width: 16, height: 16, radius: 8, bg_color: 0x2A2A2A, border_width: 0, scrollable: false, hidden: true}
+        - obj: {id: pd6, x: 0, y: 84, width: 16, height: 16, radius: 8, bg_color: 0x2A2A2A, border_width: 0, scrollable: false, hidden: true}
+        - obj: {id: pd7, x: 0, y: 84, width: 16, height: 16, radius: 8, bg_color: 0x2A2A2A, border_width: 0, scrollable: false, hidden: true}
+        - button: {x: 18,  y: 124, width: 140, height: 76, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "1"}}, widgets: [label: {align: CENTER, text: "1", text_font: f_sg_30}]}
+        - button: {x: 170, y: 124, width: 140, height: 76, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "2"}}, widgets: [label: {align: CENTER, text: "2", text_font: f_sg_30}]}
+        - button: {x: 322, y: 124, width: 140, height: 76, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "3"}}, widgets: [label: {align: CENTER, text: "3", text_font: f_sg_30}]}
+        - button: {x: 18,  y: 210, width: 140, height: 76, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "4"}}, widgets: [label: {align: CENTER, text: "4", text_font: f_sg_30}]}
+        - button: {x: 170, y: 210, width: 140, height: 76, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "5"}}, widgets: [label: {align: CENTER, text: "5", text_font: f_sg_30}]}
+        - button: {x: 322, y: 210, width: 140, height: 76, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "6"}}, widgets: [label: {align: CENTER, text: "6", text_font: f_sg_30}]}
+        - button: {x: 18,  y: 296, width: 140, height: 76, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "7"}}, widgets: [label: {align: CENTER, text: "7", text_font: f_sg_30}]}
+        - button: {x: 170, y: 296, width: 140, height: 76, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "8"}}, widgets: [label: {align: CENTER, text: "8", text_font: f_sg_30}]}
+        - button: {x: 322, y: 296, width: 140, height: 76, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "9"}}, widgets: [label: {align: CENTER, text: "9", text_font: f_sg_30}]}
+        - button: {x: 18,  y: 382, width: 140, height: 76, styles: st_key, bg_opa: TRANSP, border_width: 0, pressed: {bg_color: 0x2A2A2A, bg_opa: COVER}, on_click: {script.execute: {id: press_key, key: "C"}}, widgets: [label: {align: CENTER, text: "CLEAR", styles: st_eyebrow}]}
+        - button: {x: 170, y: 382, width: 140, height: 76, styles: st_key, pressed: {bg_color: 0x2A2A2A}, on_click: {script.execute: {id: press_key, key: "0"}}, widgets: [label: {align: CENTER, text: "0", text_font: f_sg_30}]}
+        - button: {x: 322, y: 382, width: 140, height: 76, styles: st_key, bg_opa: TRANSP, border_width: 0, pressed: {bg_color: 0x2A2A2A, bg_opa: COVER}, on_click: {script.execute: {id: press_key, key: "<"}}, widgets: [label: {align: CENTER, text: "", text_font: montserrat_24, text_color: 0x8C8C8C}]}
 
 script:
   - id: open_pin
@@ -272,9 +255,7 @@ script:
                             : a == "away" ? "ENTER PIN TO ARM AWAY"
                             : s == "triggered" ? "ENTER PIN TO SILENCE"
                             : "ENTER PIN TO DISARM";
-          const char *go = a == "home" ? "ARM HOME" : a == "away" ? "ARM AWAY" : "DISARM";
           lv_label_set_text(id(lbl_pin_title), title);
-          lv_label_set_text(id(lbl_pin_go), go);
 
           std::string sub;
           uint32_t col = 0xF5F5F5;
@@ -292,15 +273,16 @@ script:
           lv_label_set_text(id(lbl_pin_sub), sub.c_str());
           lv_obj_set_style_text_color(id(lbl_pin_sub), lv_color_hex(col), LV_PART_MAIN);
 
-          const auto &c = id(code_buf);
-          std::string dots;
-          if (c.empty()) {
-            dots = "- - - -";
-          } else {
-            for (size_t i = 0; i < c.size(); i++) dots += "\xE2\x80\xA2";
+          // PIN slots: one dot per digit of the PIN length, filled as typed.
+          const size_t n = (size_t) id(pin_length).state, typed = id(code_buf).size();
+          lv_obj_t *dots[8] = {id(pd0), id(pd1), id(pd2), id(pd3), id(pd4), id(pd5), id(pd6), id(pd7)};
+          const int pitch = 34, x0 = 240 - ((int) n * pitch - (pitch - 16)) / 2;
+          for (size_t i = 0; i < 8; i++) {
+            if (i >= n) { lv_obj_add_flag(dots[i], LV_OBJ_FLAG_HIDDEN); continue; }
+            lv_obj_remove_flag(dots[i], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_set_x(dots[i], x0 + (int) i * pitch);
+            lv_obj_set_style_bg_color(dots[i], lv_color_hex(i < typed ? 0xF5F5F5 : 0x2A2A2A), LV_PART_MAIN);
           }
-          lv_label_set_text(id(lbl_pin), dots.c_str());
-          lv_obj_set_style_text_color(id(lbl_pin), lv_color_hex(c.empty() ? 0x3A3A3A : 0xF5F5F5), LV_PART_MAIN);
 
   # ---- Main screen rendering -------------------------------------------------
   - id: refresh_ui

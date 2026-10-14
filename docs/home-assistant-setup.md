@@ -85,6 +85,7 @@ Entities (prefix `alarm_keypad_`, or whatever you named the device):
 | `text.*_mqtt_password` | config | Broker password (stored on the device) |
 | `text.*_alarmo_topic_prefix` | config | `alarmo` |
 | `switch.*_require_pin_to_arm` | config | Off = Home/Away arm with one tap. Also on the keypad's Settings page |
+| `number.*_pin_length` | config | Digits in your Alarmo PINs (default 4). The PIN pad sends as soon as this many are typed |
 | `number.*_screen_timeout`, `*_active_brightness`, `*_idle_brightness` | config | Screen |
 | `binary_sensor.*_mqtt_connected` | diagnostic | Keypad ↔ broker link |
 | `sensor.*_screen_status` | diagnostic | Mirror of the keypad header, e.g. `Arming Away \| Leave now - 25 s [away]`. Never contains a PIN |

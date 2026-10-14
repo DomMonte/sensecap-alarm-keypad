@@ -66,6 +66,7 @@ script:
       code: string
     then:
       - logger.log:
+          level: INFO
           format: "send_command %s (code %s)"
           args: ['cmd.c_str()', 'code.empty() ? "none" : "given"']
 
@@ -88,7 +89,7 @@ script:
           else if (sc == "armed_home") { st("armed_home"); }
           else if (sc.rfind("pending", 0) == 0) { st("armed_away"); ev("{\"event\":\"TRIGGER\",\"delay\":30,\"sensors\":[{\"entity_id\":\"binary_sensor.front_door\",\"name\":\"Front Door\"}]}"); st("pending"); }
           else if (sc.rfind("triggered", 0) == 0) { st("armed_away"); ev("{\"event\":\"TRIGGER\",\"delay\":0,\"sensors\":[{\"entity_id\":\"binary_sensor.front_door\",\"name\":\"Front Door\"}]}"); st("triggered"); }
-          else if (sc == "pin") { st("armed_away"); }
+          else if (sc == "pin" || sc == "pinfull") { st("armed_away"); }
           else if (sc == "wrongpin") { st("armed_away"); }
       - delay: 300ms
       - lambda: |-
@@ -101,6 +102,7 @@ script:
       - lambda: |-
           std::string sc = getenv("SCENARIO") ? getenv("SCENARIO") : "disarmed";
           if (sc == "pin") { for (auto k : {"4", "8", "1"}) id(press_key).execute(std::string(k)); }
+          if (sc == "pinfull") { id(open_pin).execute(std::string("off")); for (auto k : {"4", "8", "1", "7"}) id(press_key).execute(std::string(k)); }
           if (sc == "wrongpin") id(on_alarm_event).execute(std::string("{\"event\":\"INVALID_CODE_PROVIDED\"}"));
           if (sc == "pending_main" || sc == "triggered_main") id(close_pin).execute();
           id(refresh_ui).execute();
