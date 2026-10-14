@@ -100,6 +100,11 @@ esphome compile preview/preview.yaml
 preview/render.sh          # writes preview/out/<scenario>.png
 ``` CI builds every push. Publishing a GitHub release deploys the web installer and the OTA manifest to GitHub Pages.
 
+## Contact
+
+Built by **Automate Smart Home Studio**. Questions, installs or custom work:
+[domenic@automatehomes.com.au](mailto:domenic@automatehomes.com.au)
+
 ## License
 
 MIT
