@@ -439,6 +439,21 @@ lvgl:
             y: 22
             text: "Settings"
             styles: st_title
+        # Each tap turns the screen a further 90 degrees (touch follows).
+        - button:
+            align: TOP_RIGHT
+            x: -12
+            y: 12
+            width: 150
+            height: 56
+            styles: st_outline
+            on_click:
+              - select.next:
+                  id: screen_rotation
+                  cycle: true
+            widgets:
+              - label: {align: LEFT_MID, x: 4, text: "\uF021", text_font: montserrat_20, text_color: 0xF5F5F5}
+              - label: {align: RIGHT_MID, x: -4, text: "ROTATE", styles: st_eyebrow, text_color: 0xF5F5F5}
         - label:
             x: 24
             y: 88
@@ -540,6 +555,19 @@ globals:
     type: bool
     restore_value: false
     initial_value: "false"
+
+select:
+  - platform: template
+    id: screen_rotation
+    name: "Screen Rotation"
+    icon: mdi:screen-rotation
+    entity_category: config
+    options: ["0°", "90°", "180°", "270°"]
+    initial_option: "0°"
+    optimistic: true
+    restore_value: true
+    on_value:
+      - lvgl.display.set_rotation: !lambda "return (int) i * 90;"
 
 number:
   - platform: template

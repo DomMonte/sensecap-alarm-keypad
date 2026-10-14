@@ -66,7 +66,7 @@ fixtures.
 | Arm | Tap **Arm Home** or **Arm Away**. With *Require PIN to arm* on, the PIN pad opens first. |
 | Disarm / cancel arming | Tap **Disarm** (or **Cancel**) and type your PIN. It sends as soon as the last digit is in (set **PIN Length** in HA to match your Alarmo PINs). |
 | Entry delay / alarm | The PIN pad opens by itself |
-| Settings | **Tap** the gear (next to the Wi-Fi icon): brightness, screen timeout, Require PIN to arm, device info, restart, re-run setup |
+| Settings | **Tap** the gear (next to the Wi-Fi icon): brightness, screen timeout, Require PIN to arm, **Rotate** (90° per tap), device info, restart, re-run setup |
 | Wake screen | Touch anywhere, or press the side button. It also wakes during arming, entry delay and alarm. |
 | Factory reset | Hold the side button for 10 seconds |
 

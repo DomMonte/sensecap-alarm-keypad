@@ -8,5 +8,6 @@
 - Screen Status diagnostic sensor.
 - Automate Smart Home Studio branding; status ring with countdown; PIN pad only when needed.
 - Desktop preview (`preview/`).
+- PIN sends as soon as PIN Length digits are typed; Rotate screen setting (90° per tap).
 - First version: on-screen Wi-Fi + Home Assistant + Alarmo onboarding, keypad UI,
   Alarmo bridge blueprint, web installer, OTA update entity.
