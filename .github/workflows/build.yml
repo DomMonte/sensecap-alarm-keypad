@@ -69,6 +69,8 @@ jobs:
         run: |
           mkdir -p site
           cp -r installer/* site/
+          cp assets/brand/*.png site/
+          cp -r docs/screens site/screens
           cp -r output/firmware site/firmware
 
       - name: Attach binaries to the GitHub release
