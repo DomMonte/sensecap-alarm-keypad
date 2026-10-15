@@ -1,0 +1,60 @@
+# =============================================================================
+#  SenseCAP Alarm Keypad - buzzer firmware for the D1's RP2040 co-processor
+#
+#  The D1's buzzer hangs off the RP2040, not the ESP32-S3, and Seeed's stock
+#  RP2040 firmware never acts on its beep command. This replaces it with the
+#  smallest thing that works: the ESP32-S3 holds its GPIO19 (the RP2040's
+#  UART RX, GPIO17) high for as long as it wants a tone. The beep pattern
+#  lives in the main firmware (packages/alarm.yaml).
+#
+#  Flash once, over USB, as a .uf2 (see README "Buzzer"):
+#    esphome compile rp2040-buzzer.yaml
+#  -> .esphome/build/alarm-keypad-buzzer/.pioenvs/alarm-keypad-buzzer/firmware.uf2
+# =============================================================================
+
+esphome:
+  name: alarm-keypad-buzzer
+  min_version: 2026.9.1
+  on_boot:
+    # Short chirp at power-up: proves this firmware is on the RP2040.
+    - output.set_level: {id: buzzer, level: 50%}
+    - delay: 80ms
+    - output.turn_off: buzzer
+
+rp2040:
+  board: rpipico
+
+logger:
+
+output:
+  # Passive buzzer: needs a square wave.
+  - platform: rp2040_pwm
+    id: buzzer
+    pin: GPIO19
+    frequency: 2700Hz
+
+binary_sensor:
+  # Beep line from the ESP32-S3. Pulled down, so a resetting or unflashed
+  # ESP32 means silence.
+  - platform: gpio
+    id: beep_line
+    pin:
+      number: GPIO17
+      mode: {input: true, pulldown: true}
+    filters:
+      - delayed_on: 10ms
+    on_press:
+      - output.set_level: {id: buzzer, level: 50%}
+      - script.execute: stuck_guard
+    on_release:
+      - script.stop: stuck_guard
+      - output.turn_off: buzzer
+
+script:
+  # The main firmware never asks for a tone longer than a second; if the line
+  # stays high (ESP32 hung mid-beep) go quiet rather than scream.
+  - id: stuck_guard
+    mode: restart
+    then:
+      - delay: 3s
+      - output.turn_off: buzzer

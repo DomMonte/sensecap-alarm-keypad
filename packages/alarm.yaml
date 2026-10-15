@@ -5,7 +5,7 @@
 # Out: send_command(cmd, code)                         (defined by packages/mqtt.yaml)
 # UI:  refresh_ui / refresh_pin / open_pin / close_pin (packages/ui-main.yaml)
 # Hooks the including config must define: wake_screen, onboarding_advance,
-# prefs_changed.
+# prefs_changed, buzzer_set(active).
 #
 # Codes are never logged or persisted.
 # -----------------------------------------------------------------------------
@@ -108,6 +108,18 @@ switch:
       - script.execute: prefs_changed
     on_turn_off:
       - script.execute: prefs_changed
+  # Beep through the keypad's buzzer during the entry delay.
+  - platform: template
+    id: entry_beep
+    name: "Entry Delay Beep"
+    icon: mdi:volume-high
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    on_turn_on:
+      - script.execute: update_beeper
+    on_turn_off:
+      - script.execute: update_beeper
 
 number:
   # Alarmo PIN length: the PIN pad sends as soon as this many digits are typed.
@@ -186,6 +198,7 @@ script:
                   lambda: "return id(pin_open) && id(alarm_state) != \"pending\" && id(alarm_state) != \"triggered\";"
                 then:
                   - script.execute: close_pin
+      - script.execute: update_beeper
       - script.execute: onboarding_advance
       - script.execute: refresh_ui
 
@@ -249,6 +262,38 @@ script:
           ESP_LOGI("alarm", "Event %s", ev.c_str());
       - script.execute: refresh_pin
       - script.execute: refresh_ui
+
+  # ---- Entry delay beep --------------------------------------------------------
+  # Long beeps (0.8 s on / 0.2 s off) from the moment Alarmo starts the entry
+  # delay (pending) until it is disarmed or the siren takes over (triggered).
+  # Quicker 0.25 s beeps for the last 10 s.
+  - id: update_beeper
+    then:
+      - if:
+          condition:
+            lambda: 'return id(alarm_state) == "pending" && id(entry_beep).state;'
+          then:
+            - if:
+                condition:
+                  not:
+                    script.is_running: entry_beeper
+                then:
+                  - script.execute: entry_beeper
+          else:
+            - script.stop: entry_beeper
+            - script.execute: {id: buzzer_set, active: false}
+
+  - id: entry_beeper
+    mode: single
+    then:
+      - while:
+          condition:
+            lambda: 'return id(alarm_state) == "pending" && id(entry_beep).state;'
+          then:
+            - script.execute: {id: buzzer_set, active: true}
+            - delay: !lambda "return id(countdown) > 0 && id(countdown) <= 10 ? 250 : 800;"
+            - script.execute: {id: buzzer_set, active: false}
+            - delay: !lambda "return id(countdown) > 0 && id(countdown) <= 10 ? 250 : 200;"
 
   # ---- User actions ----------------------------------------------------------
   # Arm button on the main screen. mode = home | away

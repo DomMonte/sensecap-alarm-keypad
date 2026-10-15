@@ -60,6 +60,10 @@ script:
   - id: prefs_changed
     then:
       - script.execute: refresh_ui
+  - id: buzzer_set
+    parameters:
+      active: bool
+    then: []
   - id: send_command
     parameters:
       cmd: string

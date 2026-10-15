@@ -39,6 +39,17 @@ jobs:
           cp -r "${{ steps.esphome-build.outputs.name }}"/* output/firmware/
           ls -la output/firmware
 
+      # Separate one-time firmware for the D1's RP2040 (drives the buzzer).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build buzzer firmware (RP2040)
+        run: |
+          pip install "esphome==${ESPHOME_VERSION}"
+          esphome compile rp2040-buzzer.yaml
+          cp .esphome/build/alarm-keypad-buzzer/.pioenvs/alarm-keypad-buzzer/firmware.uf2 output/firmware/alarm-keypad-buzzer.uf2
+
       - uses: actions/upload-artifact@v5
         with:
           name: firmware
@@ -77,7 +88,7 @@ jobs:
         if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ github.event.release.tag_name }}" output/firmware/*.bin --clobber
+        run: gh release upload "${{ github.event.release.tag_name }}" output/firmware/*.bin output/firmware/*.uf2 --clobber
 
       - uses: actions/upload-pages-artifact@v4
         with:

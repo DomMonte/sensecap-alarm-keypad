@@ -11,7 +11,7 @@ and how it is configured. Nothing here is compiled into the firmware.
 | Alarmo code rules | Alarmo › **Codes** tab | PIN to disarm only |
 | Exit / entry delays | Alarmo › General › **Modes** › Armed away | 30 s to leave, 30 s to disarm |
 | PINs | Alarmo › Codes › **User management** | The only place PINs exist |
-| Keypad settings | Settings › Devices › *(keypad)* › Configuration | MQTT login, topic prefix, Require PIN to Arm |
+| Keypad settings | Settings › Devices › *(keypad)* › Configuration | MQTT login, topic prefix, Require PIN to Arm, Entry Delay Beep |
 | Apple Home helper | Settings › Devices & services › **Helpers** › **Alarm** | No-code alarm panel for the Home app |
 | HomeKit Bridge | Settings › Devices & services › HomeKit Bridge › Configure | Shares **Alarm**, not Alarmo |
 | Dashboard cards | Overview › Home view (top two cards) | Live alarm status |
@@ -66,6 +66,8 @@ before arming. For Alarmo to actually *check* that PIN, turn **Require code for 
 Change these here; the keypad shows whatever countdown Alarmo sends, no firmware
 change needed. A door with an exit delay may be open while arming **Away** (you walk
 out through it); in **Home** an open sensor blocks arming ("Close first: …").
+The keypad beeps through the whole entry time, so a mode with no entry time goes
+straight to the siren without a beep.
 
 ### Users — *Alarmo › Codes › User management*
 
@@ -85,6 +87,7 @@ Entities (prefix `alarm_keypad_`, or whatever you named the device):
 | `text.*_mqtt_password` | config | Broker password (stored on the device) |
 | `text.*_alarmo_topic_prefix` | config | `alarmo` |
 | `switch.*_require_pin_to_arm` | config | Off = Home/Away arm with one tap. Also on the keypad's Settings page |
+| `switch.*_entry_delay_beep` | config | On (default) = beep through the keypad's buzzer during the entry delay. Needs the RP2040 buzzer firmware (README › Buzzer) |
 | `number.*_pin_length` | config | Digits in your Alarmo PINs (default 4). The PIN pad sends as soon as this many are typed |
 | `select.*_screen_rotation` | config | 0° / 90° / 180° / 270°. Also the **Rotate** button on the keypad's Settings page |
 | `number.*_screen_timeout`, `*_active_brightness`, `*_idle_brightness` | config | Screen |

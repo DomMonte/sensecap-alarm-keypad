@@ -6,6 +6,7 @@ Turn a **Seeed SenseCAP Indicator D1** (4" 480×480 touch screen, ESP32-S3) into
 - **Branded for Automate Smart Home Studio:** monochrome, serif headlines, a status ring that fills with the exit/entry countdown.
 - **One tap to arm** (Home / Away). The PIN pad only appears when a PIN is needed: to disarm, during the entry delay, or to arm if *Require PIN to arm* is on.
 - **PINs only exist in Alarmo.** The keypad forwards what you type; Alarmo checks it, applies user permissions and logs who disarmed.
+- **Entry delay beep:** the keypad sounds long beeps through its own buzzer from the moment a door opens until you disarm or the siren goes off, quickening for the last 10 seconds. This needs the [buzzer firmware](#buzzer) on the D1's second chip (a one-time flash).
 - **Live status:** Off / Armed / exit countdown / entry countdown with the door that opened / ALARM, plus wrong-PIN and "close first" messages.
 
 > ⚠️ This is a convenience keypad, not a certified security product. If Home Assistant or the MQTT broker is down, the keypad can't arm or disarm. Make sure your sirens and sensors fail safe on their own (e.g. Konnected's standalone alarm logic).
@@ -42,6 +43,19 @@ packages:
 ```
 
 You can override any `substitutions:` value, e.g. `friendly_name`.
+
+### Buzzer
+
+The D1's buzzer is wired to its second chip (an RP2040), not the ESP32-S3. Seeed's stock RP2040 firmware doesn't respond to beep commands, so it gets a tiny replacement, [`rp2040-buzzer.yaml`](rp2040-buzzer.yaml). It sounds a tone whenever the main firmware asks for one. This is a one-time job; the keypad firmware's OTA updates don't touch it.
+
+1. Get `alarm-keypad-buzzer.uf2` from the release, or build it: `esphome compile rp2040-buzzer.yaml` writes `.esphome/build/alarm-keypad-buzzer/.pioenvs/alarm-keypad-buzzer/firmware.uf2`.
+2. Put the RP2040 in its USB bootloader. With Seeed's stock firmware you don't need to open the case: plug the D1 in and open its RP2040 serial port at **1200 baud** (e.g. `python3 -c "import serial; serial.Serial('/dev/cu.usbmodemXXXX', 1200).close()"`). Otherwise unplug it, hold the **internal button** down with a pin ([Seeed's guide](https://wiki.seeedstudio.com/SenseCAP_Indicator_How_To_Flash_The_Default_Firmware/) shows where it is), plug the USB-C in, then let go.
+3. A USB drive called **RPI-RP2** appears. Copy the `.uf2` onto it. The drive closes by itself when it's done.
+4. Unplug and replug the D1. A short **chirp** at power-up means the buzzer firmware is running.
+
+Tip: back up Seeed's firmware first while the drive is mounted: `picotool save -a rp2040-stock.uf2`.
+
+Without it, everything else works; the keypad is just silent. The beep can be switched off with **Entry Delay Beep** in HA (keypad device › Configuration).
 
 ## Home Assistant setup
 
@@ -89,7 +103,9 @@ pip install esphome==2026.9.1
 esphome run sensecap-alarm-keypad.yaml
 ```
 
-Packages: `hardware-d1.yaml` (pins), `core.yaml` (network/API/OTA), `alarm.yaml` (keypad logic), `mqtt.yaml` (Alarmo MQTT transport), `theme.yaml` (brand fonts/colours/logo), `ui-main.yaml` (main screen + PIN pad) and `ui.yaml` (onboarding + settings).
+`rp2040-buzzer.yaml` is the separate firmware for the D1's RP2040 (see [Buzzer](#buzzer)).
+
+Packages: `hardware-d1.yaml` (pins, buzzer line), `core.yaml` (network/API/OTA), `alarm.yaml` (keypad logic), `mqtt.yaml` (Alarmo MQTT transport), `theme.yaml` (brand fonts/colours/logo), `ui-main.yaml` (main screen + PIN pad) and `ui.yaml` (onboarding + settings).
 
 ### Desktop preview
 

@@ -1,7 +1,8 @@
 # -----------------------------------------------------------------------------
 # SenseCAP Indicator D1 - hardware definition (ESP32-S3 side only)
 # Pins taken from https://devices.esphome.io/devices/seeed-sensecap/
-# The RP2040 co-processor (buzzer, SD, Grove) is not used in v1.
+# The RP2040 co-processor drives the buzzer. It runs rp2040-buzzer.yaml, which
+# sounds a tone while our GPIO19 (its UART RX) is high. SD and Grove are unused.
 # -----------------------------------------------------------------------------
 
 esp32:
@@ -56,6 +57,14 @@ output:
       ignore_strapping_warning: true
     frequency: 1000Hz
 
+  # Beep line to the RP2040 (see rp2040-buzzer.yaml). With Seeed's stock RP2040
+  # firmware it does nothing.
+  # ESPHome warns GPIO19 is USB-Serial-JTAG; the D1's USB-C goes through a
+  # USB-serial chip to UART0 instead, and Seeed's firmware uses GPIO19 the same way.
+  - platform: gpio
+    id: beep_line
+    pin: GPIO19
+
 light:
   - platform: monochromatic
     id: backlight
@@ -100,3 +109,13 @@ binary_sensor:
           then:
             - logger.log: "User button held 10 s - factory reset"
             - button.press: factory_reset_btn
+
+script:
+  # Buzzer hook for packages/alarm.yaml.
+  - id: buzzer_set
+    parameters:
+      active: bool
+    then:
+      - lambda: |-
+          if (active) id(beep_line)->turn_on();
+          else id(beep_line)->turn_off();
