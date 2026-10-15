@@ -1,6 +1,7 @@
 # Changelog
 
 ## 0.1.0 - unreleased
+- MQTT Password is masked in HA (kept on the device only), so it no longer shows in history/activity.
 - Entry delay beep through the D1's buzzer (constant tone); *Entry Delay Beep*
   setting. Needs the new RP2040 buzzer firmware (`rp2040-buzzer.yaml`).
 - Switched to Alarmo's native MQTT (no blueprint); broker login set from HA.

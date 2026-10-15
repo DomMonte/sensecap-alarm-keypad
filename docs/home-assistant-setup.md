@@ -85,7 +85,7 @@ Entities (prefix `alarm_keypad_`, or whatever you named the device):
 | `text.*_mqtt_broker` | config | Broker host (`homeassistant.local`) |
 | `number.*_mqtt_port` | config | `1883` |
 | `text.*_mqtt_username` | config | `alarm-keypad` |
-| `text.*_mqtt_password` | config | Broker password (stored on the device) |
+| `text.*_mqtt_password` | config | Broker password. Stored on the device only; HA just shows `••••••••`, so it never appears in history or the activity log. To change it, type the new one over the dots |
 | `text.*_alarmo_topic_prefix` | config | `alarmo` |
 | `switch.*_require_pin_to_arm` | config | Off = Home/Away arm with one tap. Also on the keypad's Settings page |
 | `switch.*_entry_delay_beep` | config | On (default) = beep through the keypad's buzzer during the entry delay. Needs the RP2040 buzzer firmware (README › Buzzer) |

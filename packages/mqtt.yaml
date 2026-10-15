@@ -37,6 +37,11 @@ mqtt:
     - script.execute: refresh_status
 
 globals:
+  # Broker password (never published - see mqtt_pass).
+  - id: mqtt_pass_value
+    type: std::string
+    restore_value: false
+    initial_value: '""'
   # Topic prefix the subscriptions currently use (to unsubscribe on change).
   - id: subscribed_prefix
     type: std::string
@@ -68,18 +73,32 @@ text:
     max_length: 64
     on_value:
       - script.execute: mqtt_apply
+  # The real password is kept on the device (flash + mqtt_pass_value); HA only
+  # ever sees a mask, so it never lands in HA's history or activity log.
+  # Not optimistic: the set_action publishes the mask instead of the value.
   - platform: template
     id: mqtt_pass
     name: "MQTT Password"
     icon: mdi:form-textbox-password
     entity_category: config
     mode: password
-    optimistic: true
+    optimistic: false
     restore_value: true
     initial_value: ""
     max_length: 64
-    on_value:
+    set_action:
+      - lambda: |-
+          id(mqtt_pass_value) = x;
+          id(mqtt_pass).publish_state(x.empty() ? "" : "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022");
       - script.execute: mqtt_apply
+    # At boot the restored (real) value is published before HA connects:
+    # keep it, then replace it with the mask.
+    on_value:
+      - lambda: |-
+          static const std::string MASK = "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022";
+          if (x.empty() || x == MASK) return;
+          id(mqtt_pass_value) = x;
+          id(mqtt_pass).publish_state(MASK);
   - platform: template
     id: alarmo_prefix
     name: "Alarmo Topic Prefix"
@@ -138,7 +157,7 @@ script:
           m->set_broker_address(host);
           m->set_broker_port((uint16_t) id(mqtt_port).state);
           m->set_username(user);
-          m->set_password(id(mqtt_pass).state);
+          m->set_password(id(mqtt_pass_value));
 
           // Move subscriptions to the (possibly new) topic prefix.
           std::string prefix = id(alarmo_prefix).state;
