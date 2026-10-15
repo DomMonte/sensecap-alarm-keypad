@@ -6,7 +6,7 @@ Turn a **Seeed SenseCAP Indicator D1** (4" 480×480 touch screen, ESP32-S3) into
 - **Branded for Automate Smart Home Studio:** monochrome, serif headlines, a status ring that fills with the exit/entry countdown.
 - **One tap to arm** (Home / Away). The PIN pad only appears when a PIN is needed: to disarm, during the entry delay, or to arm if *Require PIN to arm* is on.
 - **PINs only exist in Alarmo.** The keypad forwards what you type; Alarmo checks it, applies user permissions and logs who disarmed.
-- **Entry delay beep:** the keypad sounds long beeps through its own buzzer from the moment a door opens until you disarm or the siren goes off, quickening for the last 10 seconds. This needs the [buzzer firmware](#buzzer) on the D1's second chip (a one-time flash).
+- **Entry delay beep:** the keypad sounds a constant tone through its own buzzer from the moment a door opens until you disarm or the siren goes off. This needs the [buzzer firmware](#buzzer) on the D1's second chip (a one-time flash).
 - **Live status:** Off / Armed / exit countdown / entry countdown with the door that opened / ALARM, plus wrong-PIN and "close first" messages.
 
 > ⚠️ This is a convenience keypad, not a certified security product. If Home Assistant or the MQTT broker is down, the keypad can't arm or disarm. Make sure your sirens and sensors fail safe on their own (e.g. Konnected's standalone alarm logic).

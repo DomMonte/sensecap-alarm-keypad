@@ -264,36 +264,13 @@ script:
       - script.execute: refresh_ui
 
   # ---- Entry delay beep --------------------------------------------------------
-  # Long beeps (0.8 s on / 0.2 s off) from the moment Alarmo starts the entry
-  # delay (pending) until it is disarmed or the siren takes over (triggered).
-  # Quicker 0.25 s beeps for the last 10 s.
+  # One constant tone from the moment Alarmo starts the entry delay (pending)
+  # until it is disarmed or the siren takes over (triggered).
   - id: update_beeper
     then:
-      - if:
-          condition:
-            lambda: 'return id(alarm_state) == "pending" && id(entry_beep).state;'
-          then:
-            - if:
-                condition:
-                  not:
-                    script.is_running: entry_beeper
-                then:
-                  - script.execute: entry_beeper
-          else:
-            - script.stop: entry_beeper
-            - script.execute: {id: buzzer_set, active: false}
-
-  - id: entry_beeper
-    mode: single
-    then:
-      - while:
-          condition:
-            lambda: 'return id(alarm_state) == "pending" && id(entry_beep).state;'
-          then:
-            - script.execute: {id: buzzer_set, active: true}
-            - delay: !lambda "return id(countdown) > 0 && id(countdown) <= 10 ? 250 : 800;"
-            - script.execute: {id: buzzer_set, active: false}
-            - delay: !lambda "return id(countdown) > 0 && id(countdown) <= 10 ? 250 : 200;"
+      - script.execute:
+          id: buzzer_set
+          active: !lambda 'return id(alarm_state) == "pending" && id(entry_beep).state;'
 
   # ---- User actions ----------------------------------------------------------
   # Arm button on the main screen. mode = home | away

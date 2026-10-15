@@ -1,7 +1,7 @@
 # Changelog
 
 ## 0.1.0 - unreleased
-- Entry delay beep through the D1's buzzer (long beeps, quicker for the last 10 s); *Entry Delay Beep*
+- Entry delay beep through the D1's buzzer (constant tone); *Entry Delay Beep*
   setting. Needs the new RP2040 buzzer firmware (`rp2040-buzzer.yaml`).
 - Switched to Alarmo's native MQTT (no blueprint); broker login set from HA.
 - Home | Away | Off selector; PIN pad always visible; PIN needed only to turn off

@@ -44,17 +44,21 @@ binary_sensor:
     filters:
       - delayed_on: 10ms
     on_press:
+      - logger.log: {level: INFO, format: "buzzer on"}
       - output.set_level: {id: buzzer, level: 50%}
       - script.execute: stuck_guard
     on_release:
+      - logger.log: {level: INFO, format: "buzzer off"}
       - script.stop: stuck_guard
       - output.turn_off: buzzer
 
 script:
-  # The main firmware never asks for a tone longer than a second; if the line
-  # stays high (ESP32 hung mid-beep) go quiet rather than scream.
+  # The main firmware holds the tone for the whole entry delay (Alarmo allows
+  # a few minutes at most). If the line stays high far longer than that (ESP32
+  # hung mid-beep) go quiet rather than sound forever.
   - id: stuck_guard
     mode: restart
     then:
-      - delay: 3s
+      - delay: 10min
+      - logger.log: {level: WARN, format: "beep line stuck high - buzzer off"}
       - output.turn_off: buzzer
