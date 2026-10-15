@@ -59,6 +59,8 @@ Without it, everything else works; the keypad is just silent. The beep can be sw
 
 ## Home Assistant setup
 
+**Brand theme:** `ha-theme/` holds an Automate theme for Home Assistant itself (colours, fonts, logo in the sidebar and tab icon). Install steps are in the setup guide.
+
 **See [docs/home-assistant-setup.md](docs/home-assistant-setup.md)** for everything on
 the HA side: the Mosquitto login, Alarmo MQTT/code/delay settings, the keypad's
 entities, the **Apple Home "Alarm" helper** (Settings › Devices & services ›

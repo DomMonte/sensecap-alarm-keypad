@@ -1,0 +1,140 @@
+# -----------------------------------------------------------------------------
+# Automate Smart Home Studio - Home Assistant theme
+# Install: copy to /config/themes/automate.yaml, add to configuration.yaml:
+#   frontend:
+#     themes: !include_dir_merge_named themes
+#     extra_module_url:
+#       - /local/automate/automate-brand.js
+# then restart once and pick "Automate" in your profile (or call
+# frontend.set_theme). Matches the keypad and automatehomes.com.au.
+# -----------------------------------------------------------------------------
+Automate:
+  # ---- Typography ----------------------------------------------------------
+  primary-font-family: "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif"
+  paper-font-common-base_-_font-family: "var(--primary-font-family)"
+  paper-font-common-code_-_font-family: "ui-monospace, Menlo, monospace"
+  ha-font-family-body: "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif"
+  ha-font-family-heading: "'Space Grotesk', Inter, system-ui, sans-serif"
+  ha-card-header-font-family: "'Space Grotesk', Inter, sans-serif"
+  mdc-typography-font-family: "var(--primary-font-family)"
+
+  # ---- Surfaces ------------------------------------------------------------
+  primary-background-color: "#0a0a0a"
+  secondary-background-color: "#141414"
+  lovelace-background: "#0a0a0a"
+  card-background-color: "#141414"
+  ha-card-background: "#141414"
+  ha-card-border-radius: "4px"
+  ha-card-border-width: "1px"
+  ha-card-border-color: "#262626"
+  ha-card-box-shadow: "none"
+  ha-dialog-border-radius: "6px"
+  ha-dialog-surface-background: "#141414"
+  mdc-theme-surface: "#141414"
+  divider-color: "#262626"
+  outline-color: "#2a2a2a"
+  table-row-background-color: "#141414"
+  table-row-alternative-background-color: "#181818"
+  code-editor-background-color: "#0f0f0f"
+
+  # ---- Text ----------------------------------------------------------------
+  primary-text-color: "#f5f5f5"
+  secondary-text-color: "#9a9a9a"
+  disabled-text-color: "#5a5a5a"
+  text-primary-color: "#0a0a0a"          # text on primary (white) buttons
+  text-light-primary-color: "#0a0a0a"
+  mdc-theme-on-primary: "#0a0a0a"
+  mdc-theme-text-primary-on-background: "#f5f5f5"
+
+  # ---- Primary / accent: white, like the website's buttons -----------------
+  primary-color: "#f5f5f5"
+  dark-primary-color: "#d4d4d4"
+  light-primary-color: "#ffffff"
+  accent-color: "#f5f5f5"
+  rgb-primary-color: "245, 245, 245"
+  rgb-accent-color: "245, 245, 245"
+  mdc-theme-primary: "#f5f5f5"
+  mdc-theme-secondary: "#f5f5f5"
+  link-text-color: "#f5f5f5"
+  # HA's newer design tokens (switches, links, chips) default to blue.
+  ha-color-primary-05: "#0f0f0f"
+  ha-color-primary-10: "#171717"
+  ha-color-primary-20: "#222222"
+  ha-color-primary-30: "#3a3a3a"
+  ha-color-primary-40: "#6e6e6e"
+  ha-color-primary-50: "#8c8c8c"
+  ha-color-primary-60: "#b5b5b5"
+  ha-color-primary-70: "#d4d4d4"
+  ha-color-primary-80: "#e5e5e5"
+  ha-color-primary-90: "#f0f0f0"
+  ha-color-primary-95: "#f7f7f7"
+
+  # ---- Header & sidebar ----------------------------------------------------
+  app-header-background-color: "#0a0a0a"
+  app-header-text-color: "#f5f5f5"
+  app-header-selection-bar-color: "#f5f5f5"
+  app-header-edit-background-color: "#141414"
+  app-header-border-bottom: "1px solid #262626"
+  sidebar-background-color: "#0a0a0a"
+  sidebar-menu-button-background-color: "#0a0a0a"
+  sidebar-text-color: "#9a9a9a"
+  sidebar-icon-color: "#8c8c8c"
+  sidebar-selected-text-color: "#ffffff"
+  sidebar-selected-icon-color: "#ffffff"
+  sidebar-selected-background-color: "#1e1e1e"
+  sidebar-border-color: "#262626"
+
+  # ---- Controls -----------------------------------------------------------
+  switch-checked-color: "#f5f5f5"
+  switch-checked-button-color: "#0a0a0a"
+  switch-checked-track-color: "#f5f5f5"
+  switch-unchecked-button-color: "#8c8c8c"
+  switch-unchecked-track-color: "#2a2a2a"
+  slider-color: "#f5f5f5"
+  slider-bar-color: "#2a2a2a"
+  paper-slider-knob-color: "#f5f5f5"
+  paper-slider-active-color: "#f5f5f5"
+  paper-slider-container-color: "#2a2a2a"
+  input-fill-color: "#1e1e1e"
+  input-ink-color: "#f5f5f5"
+  input-label-ink-color: "#9a9a9a"
+  input-idle-line-color: "#3a3a3a"
+  input-hover-line-color: "#8c8c8c"
+  mdc-text-field-fill-color: "#1e1e1e"
+  mdc-text-field-ink-color: "#f5f5f5"
+  mdc-text-field-label-ink-color: "#9a9a9a"
+  mdc-select-fill-color: "#1e1e1e"
+  ha-assist-chip-filled-container-color: "#1e1e1e"
+
+  # ---- State colours (monochrome; colour only where it means something) ----
+  state-icon-color: "#9a9a9a"
+  state-active-color: "#f5f5f5"
+  state-inactive-color: "#5a5a5a"
+  state-unavailable-color: "#3a3a3a"
+  state-on-color: "#f5f5f5"
+  state-off-color: "#5a5a5a"
+  state-light-active-color: "#f5f5f5"
+  state-switch-active-color: "#f5f5f5"
+  state-cover-active-color: "#f5f5f5"
+  state-binary_sensor-active-color: "#f5f5f5"
+  state-alarm_control_panel-disarmed-color: "#5a5a5a"   # HA draws a white icon on the selected button
+  state-alarm_control_panel-arming-color: "#f0a030"
+  state-alarm_control_panel-pending-color: "#f0a030"
+  state-alarm_control_panel-armed_home-color: "#e5484d"
+  state-alarm_control_panel-armed_away-color: "#e5484d"
+  state-alarm_control_panel-armed_night-color: "#e5484d"
+  state-alarm_control_panel-armed_vacation-color: "#e5484d"
+  state-alarm_control_panel-armed_custom_bypass-color: "#e5484d"
+  state-alarm_control_panel-triggered-color: "#e5484d"
+  success-color: "#f5f5f5"
+  warning-color: "#f0a030"
+  error-color: "#e5484d"
+  info-color: "#9a9a9a"
+  label-badge-red: "#e5484d"
+  label-badge-blue: "#9a9a9a"
+  label-badge-green: "#f5f5f5"
+  label-badge-yellow: "#f0a030"
+
+  # ---- Dark mode flag so HA picks dark variants of built-in assets ----------
+  modes:
+    dark: {}

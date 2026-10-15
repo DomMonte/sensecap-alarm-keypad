@@ -14,7 +14,8 @@ and how it is configured. Nothing here is compiled into the firmware.
 | Keypad settings | Settings › Devices › *(keypad)* › Configuration | MQTT login, topic prefix, Require PIN to Arm, Entry Delay Beep |
 | Apple Home helper | Settings › Devices & services › **Helpers** › **Alarm** | No-code alarm panel for the Home app |
 | HomeKit Bridge | Settings › Devices & services › HomeKit Bridge › Configure | Shares **Alarm**, not Alarmo |
-| Dashboard cards | Overview › Home view (top two cards) | Live alarm status |
+| Dashboard cards | Overview › Home view | Automate logo card, alarm tile |
+| Brand theme | `/config/themes/automate.yaml` + `/config/www/automate/` | Automate look, logo in sidebar, tab icon (see §6) |
 | Test sensor (dev only) | Helpers › **Test Door** / `input_boolean.test_door` | Dummy door for testing |
 
 ---
@@ -152,7 +153,42 @@ template:
 - **Alarm test** — entities card: Alarmo state, Test Door toggle and sensor, keypad
   MQTT connection, keypad Require PIN to Arm.
 
-## 6. Test fixtures (remove before going live)
+## 6. Automate brand theme
+
+Files (copies in this repo's `ha-theme/`):
+
+| On the HA box | From | What it does |
+|---|---|---|
+| `/config/themes/automate.yaml` | `ha-theme/automate.yaml` | Colours and fonts: near-black surfaces, flat bordered cards, white primary, red armed / amber delay. HA's blue `ha-color-primary-*` scale is mapped to greys |
+| `/config/www/automate/automate-brand.js` | `ha-theme/automate-brand.js` | Loads Inter + Space Grotesk, shows the Automate wordmark at the top of the sidebar, sets the tab icon and "Automate" in the tab title |
+| `/config/www/automate/*.png` | `ha-theme/*.png` | Logo, padded logo for the dashboard card, tab icons |
+
+`configuration.yaml`:
+
+```yaml
+frontend:
+  themes: !include_dir_merge_named themes
+  extra_module_url:
+    - /local/automate/automate-brand.js
+```
+
+Restart HA once (needed the first time `frontend:` or `www/` is added), then make it
+the default for everyone, including wall tablets:
+
+```yaml
+action: frontend.set_theme
+data: {name: Automate}            # and again with mode: dark
+```
+
+**Dashboard logo:** kiosk mode hides the sidebar and header, so customer screens get a
+picture card at the top of the dashboard: `image: /local/automate/automate-logo-card.png`.
+
+Notes: HA draws a white icon on the selected button of tile controls, so the
+*disarmed* colour is grey (`#5a5a5a`) rather than white. The loading splash
+(HA's own logo, shown before the frontend starts) can't be themed. After
+updating `automate-brand.js`, browsers may keep the old copy until a hard refresh.
+
+## 7. Test fixtures (remove before going live)
 
 - `input_boolean.test_door` — toggle to "open" the dummy door.
 - **Test Door** template helper → `binary_sensor.test_door`
